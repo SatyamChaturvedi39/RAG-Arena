@@ -4,6 +4,13 @@ This file is the persistent context for Claude Code sessions on this project.
 Update it at the end of every session so the next session (even on a different
 account) can pick up seamlessly.
 
+## Session Rules (non-negotiable, follow every session)
+
+1. **Commit frequently** — commit after every meaningful unit of work (a working module, a passing test, a completed feature). Never let more than ~1 hour of work sit uncommitted.
+2. **No "Co-authored-by: Claude"** — never add this line to commit messages. Commits are authored by the user (SatyamChaturvedi39) only.
+3. **Update this file (CLAUDE.md) at the end of every session** — reflect current build state, what was completed, what's next. This is the continuity document.
+4. **Update NOTES.md every session** — log decisions made, problems hit, things learned. This feeds the blog post.
+
 ---
 
 ## Project Summary
