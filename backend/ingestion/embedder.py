@@ -1,106 +1,109 @@
 """
-Async Gemini embedding client.
+Async Gemini embedding client using the REST API directly.
 
-Free tier limits:
+Model: gemini-embedding-001 (v1beta, supports embedContent)
+Note: text-embedding-004 is NOT available in this API key's quota.
+      gemini-embedding-001 outputs 3072 dims by default; we request 768
+      via outputDimensionality to match the vector(768) schema column.
+
+Available embedding endpoints (v1beta):
+  POST .../models/gemini-embedding-001:embedContent  — single text per call
+  No batchEmbedContents — we call embedContent concurrently instead.
+
+Free tier limits (gemini-embedding-001):
   - 100 RPM (requests per minute)
   - 1500 RPD (requests per day)
-  - Batch size: up to 100 texts per request
 
 Rate-limiting strategy:
-  - asyncio.Semaphore(2) limits concurrent batch requests
-  - At ~2-3 sec per batch call, this stays well under 100 RPM
-  - We batch 100 chunks per call → 15 batch calls max per day (1500 RPD / 100)
-  - At 100 chunks/batch that's 1500 chunks max per day (~3 medium-size docs)
-
-IMPORTANT: Never re-embed chunks that are already in the DB.
-The insert_chunks() in supabase_client uses upsert with the unique(document_id, chunk_index)
-constraint, so re-running ingestion is safe, but embedder.py should not be called
-for chunks that already have embeddings.
+  - asyncio.Semaphore(embed_batch_semaphore) limits concurrency
+  - semaphore(2) at ~0.5-1 sec latency ≈ 120-240 RPM — tenacity retries on 429
 """
 import asyncio
 from typing import Optional
 
-import google.generativeai as genai
-from tenacity import retry, stop_after_attempt, wait_exponential
+import httpx
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from ingestion.chunker import Chunk
 
+_EMBED_URL = (
+    "https://generativelanguage.googleapis.com"
+    "/v1beta/models/{model}:embedContent"
+)
 
-def _configure():
-    from config import get_settings
-    genai.configure(api_key=get_settings().gemini_api_key)
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry on 429 (rate limit) and 5xx errors."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in (429, 500, 502, 503, 504)
+    return isinstance(exc, (httpx.TimeoutException, httpx.NetworkError))
 
 
 @retry(
+    retry=retry_if_exception(_is_retryable),
     wait=wait_exponential(multiplier=1, min=3, max=60),
-    stop=stop_after_attempt(4),
+    stop=stop_after_attempt(5),
     reraise=True,
 )
-def _embed_batch_sync(texts: list[str], model: str) -> list[list[float]]:
-    """
-    Synchronous batch embedding call (Gemini SDK is sync-only).
-    Wrapped with retry for transient 429/503 errors.
-    """
-    result = genai.embed_content(
-        model=model,
-        content=texts,
-        task_type="retrieval_document",
-    )
-    return result["embedding"]
+async def _embed_one(
+    text: str,
+    model: str,
+    api_key: str,
+    task_type: str,
+    output_dim: int,
+) -> list[float]:
+    """Single embedContent REST call (v1beta)."""
+    url = _EMBED_URL.format(model=model)
+    payload: dict = {
+        "content": {"parts": [{"text": text}]},
+        "taskType": task_type,
+        "outputDimensionality": output_dim,
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(url, json=payload, params={"key": api_key})
+        resp.raise_for_status()
+        return resp.json()["embedding"]["values"]
 
 
 async def embed_chunks(
     chunks: list[Chunk],
-    batch_size: Optional[int] = None,
+    _batch_size: Optional[int] = None,  # kept for API compatibility, unused
 ) -> list[Chunk]:
     """
-    Embed all chunks in parallel batches.
+    Embed all chunks concurrently (limited by semaphore).
     Fills chunk.embedding in-place and returns the same list.
     """
     from config import get_settings
     settings = get_settings()
-    _configure()
 
-    bs = batch_size or settings.embed_batch_size
     model = settings.gemini_embed_model
+    api_key = settings.gemini_api_key
+    output_dim = settings.embed_output_dimensions
     sem = asyncio.Semaphore(settings.embed_batch_semaphore)
 
-    async def embed_batch(batch: list[Chunk]) -> None:
+    async def embed_one_chunk(chunk: Chunk) -> None:
         async with sem:
-            texts = [c.text for c in batch]
-            # Run sync SDK call in executor to avoid blocking the event loop
-            embeddings = await asyncio.get_event_loop().run_in_executor(
-                None, _embed_batch_sync, texts, model
+            chunk.embedding = await _embed_one(
+                chunk.text, model, api_key, "RETRIEVAL_DOCUMENT", output_dim
             )
-            for chunk, emb in zip(batch, embeddings):
-                chunk.embedding = emb
 
-    batches = [chunks[i : i + bs] for i in range(0, len(chunks), bs)]
-    await asyncio.gather(*[embed_batch(b) for b in batches])
+    await asyncio.gather(*[embed_one_chunk(c) for c in chunks])
     return chunks
 
 
 async def embed_query(query: str) -> list[float]:
-    """
-    Embed a single query string for retrieval (uses retrieval_query task type).
-    """
+    """Embed a single query string for retrieval."""
     from config import get_settings
-    _configure()
-    model = get_settings().gemini_embed_model
-
-    result = await asyncio.get_event_loop().run_in_executor(
-        None,
-        lambda: genai.embed_content(
-            model=model,
-            content=query,
-            task_type="retrieval_query",
-        ),
+    settings = get_settings()
+    return await _embed_one(
+        query,
+        settings.gemini_embed_model,
+        settings.gemini_api_key,
+        "RETRIEVAL_QUERY",
+        settings.embed_output_dimensions,
     )
-    return result["embedding"]
 
 
 async def check_gemini() -> None:
     """Lightweight connectivity check used by /health endpoint."""
-    _configure()
-    # Embed a tiny string — uses <1 quota unit
     await embed_query("health check")

@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     # Model config — can be overridden via env vars without code changes
     groq_nav_model: str = "llama-3.1-8b-instant"       # routing + tree navigation (fast/cheap)
     groq_answer_model: str = "llama-3.3-70b-versatile" # final answer generation (quality)
-    gemini_embed_model: str = "models/text-embedding-004"
+    # gemini-embedding-001 is the available free-tier model (v1beta, supports embedContent)
+    # text-embedding-004 is NOT available with this key's quota
+    gemini_embed_model: str = "gemini-embedding-001"
+    embed_output_dimensions: int = 768   # Matryoshka truncation — matches vector(768) schema
 
     # Chunking defaults
     chunk_size: int = 512       # tokens (approximate, using char heuristic: 1 token ≈ 4 chars)
