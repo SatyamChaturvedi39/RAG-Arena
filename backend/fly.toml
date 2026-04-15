@@ -2,7 +2,7 @@
 # Deploy with: flyctl deploy --config backend/fly.toml
 
 app = "rag-arena-backend"
-primary_region = "iad"      # US East — closest to Supabase's default AWS us-east-1
+primary_region = "bom"   # Fly.io's Mumbai region
 
 [build]
   # Fly.io will detect the Dockerfile automatically
