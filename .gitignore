@@ -51,3 +51,7 @@ eval/data/*.json.gz
 
 # Fly.io
 .fly/
+
+# Living session docs — committed once as baseline, not re-committed each session
+CLAUDE.md
+NOTES.md
