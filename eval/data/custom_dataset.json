@@ -1,0 +1,8 @@
+[
+  {
+    "_note": "Custom evaluation dataset — 20 questions on non-FinanceBench documents.",
+    "_note2": "Add entries as: { question, answer, doc_name, doc_type }",
+    "_note3": "Aim for a mix of precise_factual and fuzzy_semantic queries.",
+    "_note4": "Target docs: 1 technical whitepaper + 1 legal contract."
+  }
+]
