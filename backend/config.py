@@ -55,6 +55,24 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
 
+    @property
+    def supabase_direct_url(self) -> str:
+        """
+        Derive the direct Postgres connection URL from the pooler URL.
+        asyncpg cannot use Supabase's PgBouncer transaction pooler (port 6543)
+        — it rejects the connection with "Tenant or user not found".
+        The direct host (db.PROJECT.supabase.co:5432) works correctly.
+
+        Pooler format:  postgresql://postgres.PROJECT:PASS@pooler.supabase.com:6543/postgres
+        Direct format:  postgresql://postgres:PASS@db.PROJECT.supabase.co:5432/postgres
+        """
+        import re
+        m = re.match(r"postgresql://postgres\.(\w+):([^@]+)@", self.supabase_db_url)
+        if m:
+            project_ref, password = m.group(1), m.group(2)
+            return f"postgresql://postgres:{password}@db.{project_ref}.supabase.co:5432/postgres"
+        return self.supabase_db_url  # fallback: use as-is
+
 
 @lru_cache
 def get_settings() -> Settings:

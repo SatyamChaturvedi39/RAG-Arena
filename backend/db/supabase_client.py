@@ -10,8 +10,6 @@ dashboard, not the direct connection. Fly.io instances share limited DB
 connections and the pooler prevents exhaustion.
 """
 from functools import lru_cache
-from typing import TYPE_CHECKING
-
 from supabase import create_client, Client
 
 
@@ -57,7 +55,7 @@ async def cosine_search(document_id: str, query_embedding: list[float], top_k: i
     # Convert list to pgvector wire format: '[0.1,0.2,...]'
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
-    conn = await asyncpg.connect(settings.supabase_db_url)
+    conn = await asyncpg.connect(settings.supabase_direct_url, ssl="require")
     try:
         rows = await conn.fetch(
             """

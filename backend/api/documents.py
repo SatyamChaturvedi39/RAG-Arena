@@ -195,8 +195,8 @@ async def _run_ingestion(doc_id: str, pdf_bytes: bytes, doc_type_hint: Optional[
         from db.tree_store import insert_tree
         from ingestion.node_summarizer import summarize_internal_nodes
 
-        hierarchy = extract_hierarchy(parsed)
-        tree_nodes, structure_score = build_tree(hierarchy, doc_id)
+        hierarchy, structure_score = extract_hierarchy(parsed)
+        tree_nodes, _ = build_tree(hierarchy, doc_id)
         _update("tree_building", 75, structure_score=structure_score)
 
         # Generate summaries for internal nodes (cached in DB)

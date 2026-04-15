@@ -79,7 +79,7 @@ async def run_vectorless_rag(document_id: str, query: str) -> PipelineResult:
 
         # Build section list for the prompt
         section_lines = "\n".join(
-            f"{i+1}. [{n['title']}] {n.get('summary', '').strip()}"
+            f"{i+1}. [{n['title']}] {(n.get('summary') or '').strip()}"
             for i, n in enumerate(nodes)
         )
 
