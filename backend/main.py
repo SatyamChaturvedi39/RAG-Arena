@@ -44,11 +44,16 @@ app.include_router(eval_router,      prefix="/eval",      tags=["eval"])
 app.include_router(metrics_router,   prefix="/metrics",   tags=["metrics"])
 
 
-@app.get("/health", tags=["health"])
+@app.api_route("/ping", methods=["GET", "HEAD"], tags=["health"])
+async def ping():
+    """Lightweight liveness probe — no external calls. Used by UptimeRobot."""
+    return {"status": "ok"}
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["health"])
 async def health():
     """
-    Liveness check. UptimeRobot pings this every 14 minutes to keep
-    the Fly.io instance warm.
+    Deep health check. UptimeRobot pings /ping; /health runs full connectivity checks.
     """
     status: dict = {"status": "ok", "version": "0.1.0"}
 

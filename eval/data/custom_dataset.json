@@ -1,8 +1,40 @@
 [
   {
-    "_note": "Custom evaluation dataset — 20 questions on non-FinanceBench documents.",
-    "_note2": "Add entries as: { question, answer, doc_name, doc_type }",
-    "_note3": "Aim for a mix of precise_factual and fuzzy_semantic queries.",
-    "_note4": "Target docs: 1 technical whitepaper + 1 legal contract."
+    "_instructions": [
+      "Fill in question/answer/doc_name before running a custom eval.",
+      "doc_name: substring of the uploaded filename (first ~20 chars). Must match a 'ready' document in the DB.",
+      "Mix of precise_factual (numbers, dates) and fuzzy_semantic questions gives the most signal.",
+      "Run via: Evaluation page → New Run → dataset: custom → max_questions: 5"
+    ]
+  },
+  {
+    "question": "REPLACE: precise factual question #1 — e.g. 'What was total revenue in FY2023?'",
+    "answer": "REPLACE: ground truth answer — e.g. '$42.1 billion'",
+    "doc_name": "REPLACE_WITH_FILENAME_PREFIX",
+    "doc_type": "financial"
+  },
+  {
+    "question": "REPLACE: precise factual question #2 — e.g. 'On what date was the report filed?'",
+    "answer": "REPLACE: ground truth answer",
+    "doc_name": "REPLACE_WITH_FILENAME_PREFIX",
+    "doc_type": "financial"
+  },
+  {
+    "question": "REPLACE: precise factual question #3 — e.g. 'What is the net income margin?'",
+    "answer": "REPLACE: ground truth answer",
+    "doc_name": "REPLACE_WITH_FILENAME_PREFIX",
+    "doc_type": "financial"
+  },
+  {
+    "question": "REPLACE: fuzzy semantic question #1 — e.g. 'What are the main risk factors discussed?'",
+    "answer": "REPLACE: ground truth answer — summarize 2-3 key risks from the document",
+    "doc_name": "REPLACE_WITH_FILENAME_PREFIX",
+    "doc_type": "financial"
+  },
+  {
+    "question": "REPLACE: fuzzy semantic question #2 — e.g. 'How does management describe the competitive landscape?'",
+    "answer": "REPLACE: ground truth answer",
+    "doc_name": "REPLACE_WITH_FILENAME_PREFIX",
+    "doc_type": "financial"
   }
 ]

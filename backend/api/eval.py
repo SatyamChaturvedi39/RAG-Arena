@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from typing import Optional
 
@@ -63,17 +62,26 @@ async def _run_eval(run_id: str, req: EvalRunRequest):
     """Background task: runs the eval suite and writes aggregate metrics."""
     import sys, os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "eval"))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-    from eval.financebench_runner import run_financebench
     from eval.metrics import compute_aggregate
 
     client = get_client()
     try:
-        results = await run_financebench(
-            run_id=run_id,
-            max_questions=req.max_questions,
-            document_ids=req.document_ids,
-        )
+        if req.dataset == "custom":
+            from eval.financebench_runner import run_custom
+            results = await run_custom(
+                run_id=run_id,
+                max_questions=req.max_questions,
+                document_ids=req.document_ids,
+            )
+        else:
+            from eval.financebench_runner import run_financebench
+            results = await run_financebench(
+                run_id=run_id,
+                max_questions=req.max_questions,
+                document_ids=req.document_ids,
+            )
         agg = compute_aggregate(results)
         client.table("evaluation_runs").update({
             "status": "completed",
