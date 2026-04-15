@@ -38,58 +38,86 @@ function UploadZone({ onUploaded }) {
     <div
       {...getRootProps()}
       className={clsx(
-        'border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors',
+        'relative rounded-2xl p-10 text-center cursor-pointer transition-all duration-300',
+        'border-2 border-dashed',
         isDragActive
-          ? 'border-accent-400 bg-accent-500/10'
-          : 'border-surface-600 hover:border-surface-500 hover:bg-surface-700/30',
+          ? 'border-accent-400 bg-accent-500/8'
+          : 'border-surface-600 hover:border-surface-500',
         uploading && 'pointer-events-none opacity-60',
       )}
+      style={isDragActive ? {
+        background: 'rgba(99, 102, 241, 0.06)',
+        boxShadow: '0 0 40px rgba(99, 102, 241, 0.12), inset 0 0 40px rgba(99, 102, 241, 0.04)',
+      } : {
+        background: 'rgba(15, 22, 35, 0.4)',
+      }}
     >
       <input {...getInputProps()} />
       <div className="flex flex-col items-center gap-3">
-        {uploading ? (
-          <Loader2 className="w-8 h-8 text-accent-400 animate-spin" />
-        ) : (
-          <Upload className="w-8 h-8 text-slate-500" />
-        )}
-        <p className="text-slate-400 text-sm">
+        <div
+          className={clsx(
+            'w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300',
+          )}
+          style={{
+            background: isDragActive
+              ? 'rgba(99, 102, 241, 0.2)'
+              : 'rgba(30, 45, 66, 0.8)',
+            border: `1px solid ${isDragActive ? 'rgba(99, 102, 241, 0.4)' : 'rgba(30, 45, 66, 1)'}`,
+          }}
+        >
           {uploading
-            ? 'Uploading…'
-            : isDragActive
-            ? 'Drop the PDF here'
-            : 'Drag & drop a PDF, or click to browse'}
-        </p>
-        <p className="text-slate-600 text-xs">Supports 10-Ks, legal contracts, technical docs</p>
+            ? <Loader2 className="w-5 h-5 text-accent-400 animate-spin" />
+            : <Upload className={clsx('w-5 h-5 transition-colors', isDragActive ? 'text-accent-300' : 'text-slate-500')} />
+          }
+        </div>
+
+        <div>
+          <p className="text-slate-300 text-sm font-medium">
+            {uploading
+              ? 'Uploading…'
+              : isDragActive
+              ? 'Drop it here'
+              : 'Drag & drop a PDF, or click to browse'}
+          </p>
+          <p className="text-slate-600 text-xs mt-1">
+            10-Ks · legal contracts · technical manuals
+          </p>
+        </div>
       </div>
+
       {error && (
-        <p className="mt-3 flex items-center justify-center gap-1 text-red-400 text-xs">
-          <AlertCircle className="w-3 h-3" /> {error}
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-red-400 text-xs">
+          <AlertCircle className="w-3.5 h-3.5" /> {error}
         </p>
       )}
     </div>
   )
 }
 
-// ─── Document row with live status polling ────────────────────────────────────
+// ─── Document row ─────────────────────────────────────────────────────────────
 
-function DocStatusBadge({ status, pct }) {
-  const colors = {
-    ready: 'bg-green-500/20 text-green-400',
-    failed: 'bg-red-500/20 text-red-400',
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    parsing: 'bg-blue-500/20 text-blue-400',
-    embedding: 'bg-indigo-500/20 text-indigo-400',
-    tree_building: 'bg-purple-500/20 text-purple-400',
+function StatusBadge({ status, pct }) {
+  const styles = {
+    ready:        { bg: 'rgba(74, 222, 128, 0.10)', color: '#4ade80', border: 'rgba(74, 222, 128, 0.20)' },
+    failed:       { bg: 'rgba(248, 113, 113, 0.10)', color: '#f87171', border: 'rgba(248, 113, 113, 0.20)' },
+    pending:      { bg: 'rgba(251, 191, 36, 0.10)',  color: '#fbbf24', border: 'rgba(251, 191, 36, 0.20)' },
+    parsing:      { bg: 'rgba(96, 165, 250, 0.10)',  color: '#60a5fa', border: 'rgba(96, 165, 250, 0.20)' },
+    embedding:    { bg: 'rgba(99, 102, 241, 0.10)',  color: '#818cf8', border: 'rgba(99, 102, 241, 0.20)' },
+    tree_building:{ bg: 'rgba(167, 139, 250, 0.10)', color: '#a78bfa', border: 'rgba(167, 139, 250, 0.20)' },
   }
+  const s = styles[status] || { bg: 'rgba(30,45,66,0.6)', color: '#64748b', border: 'rgba(30,45,66,1)' }
+
   return (
-    <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', colors[status] || 'bg-slate-700 text-slate-400')}>
-      {status === 'ready' ? 'ready' : `${status} ${pct < 100 ? `${pct}%` : ''}`}
+    <span
+      className="text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+    >
+      {status === 'ready' ? 'ready' : `${status}${pct < 100 ? ` ${pct}%` : ''}`}
     </span>
   )
 }
 
 function DocumentRow({ doc, onDelete, onSelect }) {
-  // Poll status while not terminal
   const isTerminal = doc.status === 'ready' || doc.status === 'failed'
   const { data: liveDoc } = useQuery({
     queryKey: ['doc-status', doc.id],
@@ -97,35 +125,61 @@ function DocumentRow({ doc, onDelete, onSelect }) {
     refetchInterval: isTerminal ? false : 2000,
     initialData: doc,
   })
-
   const d = liveDoc || doc
+  const isIngesting = !isTerminal
 
   return (
-    <div className="card flex items-center gap-4 hover:border-surface-500 transition-colors">
-      <FileText className="w-5 h-5 text-slate-500 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{d.filename}</p>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {d.page_count ? `${d.page_count} pages` : ''}
-          {d.doc_type ? ` · ${d.doc_type}` : ''}
-          {d.structure_score != null ? ` · structure ${(d.structure_score * 100).toFixed(0)}%` : ''}
-          {d.total_chunks ? ` · ${d.total_chunks} chunks` : ''}
-        </p>
+    <div
+      className="rounded-xl border p-4 flex items-center gap-4 transition-all duration-200 group"
+      style={{
+        background: 'rgba(15, 22, 35, 0.6)',
+        borderColor: isIngesting ? 'rgba(99, 102, 241, 0.2)' : 'rgba(30, 45, 66, 0.7)',
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: 'rgba(30, 45, 66, 0.8)', border: '1px solid rgba(42, 61, 88, 0.8)' }}
+      >
+        <FileText className="w-4 h-4 text-slate-500" />
       </div>
-      <DocStatusBadge status={d.status} pct={d.progress_pct || 0} />
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-slate-200 truncate">{d.filename}</p>
+        <p className="text-xs text-slate-600 mt-0.5">
+          {[
+            d.page_count && `${d.page_count} pages`,
+            d.doc_type,
+            d.structure_score != null && `structure ${(d.structure_score * 100).toFixed(0)}%`,
+            d.total_chunks && `${d.total_chunks} chunks`,
+          ].filter(Boolean).join(' · ')}
+        </p>
+
+        {/* Progress bar for in-progress docs */}
+        {isIngesting && d.progress_pct > 0 && (
+          <div className="progress-bar mt-2 w-full">
+            <div className="progress-fill" style={{ width: `${d.progress_pct}%` }} />
+          </div>
+        )}
+      </div>
+
+      <StatusBadge status={d.status} pct={d.progress_pct || 0} />
+
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => onSelect(d.id)}
           disabled={d.status !== 'ready'}
-          className="btn-secondary text-xs py-1 px-3 flex items-center gap-1 disabled:opacity-40"
+          className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-30"
         >
           Compare <ChevronRight className="w-3 h-3" />
         </button>
         <button
           onClick={() => onDelete(d.id)}
-          className="p-1.5 text-slate-500 hover:text-red-400 transition-colors rounded-md hover:bg-red-400/10"
+          className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 transition-colors"
+          style={{ background: 'transparent' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(248, 113, 113, 0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
@@ -137,7 +191,6 @@ function DocumentRow({ doc, onDelete, onSelect }) {
 export default function Home() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [pendingIds, setPendingIds] = useState([])
 
   const { data, isLoading } = useQuery({
     queryKey: ['documents'],
@@ -150,32 +203,33 @@ export default function Home() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['documents'] }),
   })
 
-  const handleUploaded = (docId) => {
-    setPendingIds((ids) => [...ids, docId])
+  const handleUploaded = () => {
     queryClient.invalidateQueries({ queryKey: ['documents'] })
   }
 
   const docs = data?.items || []
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-8">
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-white">Documents</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Upload PDFs to index them with both RAG pipelines. Financial filings, legal
-          contracts, and technical manuals work best.
+        <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">
+          Upload a PDF to index it with both RAG pipelines simultaneously.
+          Financial filings, legal contracts, and technical manuals work best.
         </p>
       </div>
 
       <UploadZone onUploaded={handleUploaded} />
 
+      {/* Document list */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
         </div>
       ) : docs.length === 0 ? (
-        <p className="text-center text-slate-600 text-sm py-8">
-          No documents yet. Upload a PDF above to get started.
+        <p className="text-center text-slate-600 text-sm py-12">
+          No documents yet — upload a PDF above to get started.
         </p>
       ) : (
         <div className="space-y-2">

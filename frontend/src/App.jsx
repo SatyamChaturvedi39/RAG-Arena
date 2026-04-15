@@ -9,12 +9,16 @@ function NavItem({ to, children }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+        `px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
           isActive
-            ? 'bg-accent-500/20 text-accent-300'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-surface-700'
+            ? 'text-white'
+            : 'text-slate-500 hover:text-slate-300'
         }`
       }
+      style={({ isActive }) => isActive ? {
+        background: 'rgba(99, 102, 241, 0.15)',
+        boxShadow: 'inset 0 0 0 1px rgba(99, 102, 241, 0.2)',
+      } : {}}
     >
       {children}
     </NavLink>
@@ -26,24 +30,35 @@ export default function App() {
     <BrowserRouter>
       <div className="min-h-screen flex flex-col">
         {/* Header */}
-        <header className="border-b border-surface-700 bg-surface-800/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <span className="font-mono font-medium text-white tracking-tight">
-                RAG<span className="text-accent-400">Arena</span>
+        <header
+          className="sticky top-0 z-50 border-b"
+          style={{
+            background: 'rgba(8, 13, 22, 0.80)',
+            borderColor: 'rgba(30, 45, 66, 0.6)',
+            backdropFilter: 'blur(20px)',
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-7">
+              {/* Logo */}
+              <span className="font-mono font-semibold text-base tracking-tight select-none">
+                RAG<span className="text-gradient">Arena</span>
               </span>
-              <nav className="flex items-center gap-1">
+
+              {/* Nav */}
+              <nav className="flex items-center gap-0.5">
                 <NavItem to="/">Documents</NavItem>
                 <NavItem to="/compare">Compare</NavItem>
                 <NavItem to="/eval">Evaluation</NavItem>
               </nav>
             </div>
+
             <ServerStatus />
           </div>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        {/* Main */}
+        <main className="flex-1 max-w-7xl mx-auto w-full px-5 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/compare" element={<Compare />} />
@@ -52,8 +67,11 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-surface-700 py-3 text-center text-xs text-slate-600">
-          RAG-Arena — open source · free tier only ·{' '}
+        <footer
+          className="border-t py-4 text-center text-xs text-slate-600"
+          style={{ borderColor: 'rgba(30, 45, 66, 0.5)' }}
+        >
+          RAG-Arena · open source · free tier only ·{' '}
           <a
             href="https://github.com/SatyamChaturvedi39/RAG-Arena"
             target="_blank"
