@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -53,37 +52,18 @@ async def ping():
 @app.api_route("/health", methods=["GET", "HEAD"], tags=["health"])
 async def health():
     """
-    Deep health check. UptimeRobot pings /ping; /health runs full connectivity checks.
+    Deep health check. Only checks Supabase DB — Groq/Gemini are checked at query
+    time to avoid burning free-tier rate limits on every UptimeRobot ping.
     """
     status: dict = {"status": "ok", "version": "0.1.0"}
 
-    # Check Supabase reachability
     try:
         from db.supabase_client import get_client
         client = get_client()
-        # Ping with a lightweight query
-        result = client.table("documents").select("id").limit(1).execute()
+        client.table("documents").select("id").limit(1).execute()
         status["db"] = "connected"
     except Exception as e:
         status["db"] = f"error: {e}"
-        status["status"] = "degraded"
-
-    # Check Groq reachability
-    try:
-        from llm.groq_client import check_groq
-        await check_groq()
-        status["groq"] = "reachable"
-    except Exception as e:
-        status["groq"] = f"error: {e}"
-        status["status"] = "degraded"
-
-    # Check Gemini reachability
-    try:
-        from ingestion.embedder import check_gemini
-        await check_gemini()
-        status["gemini"] = "reachable"
-    except Exception as e:
-        status["gemini"] = f"error: {e}"
         status["status"] = "degraded"
 
     return status

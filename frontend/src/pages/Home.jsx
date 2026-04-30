@@ -2,11 +2,77 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDropzone } from 'react-dropzone'
 import { useNavigate } from 'react-router-dom'
-import { Upload, FileText, Trash2, ChevronRight, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
+import {
+  Upload, FileText, Trash2, ChevronRight, AlertCircle,
+  Loader2, CheckCircle2, Zap, TreePine,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
 import { uploadDocument, listDocuments, deleteDocument, getDocumentStatus } from '../api/client'
 import clsx from 'clsx'
+
+// ─── Strategy cards ───────────────────────────────────────────────────────────
+
+function StrategyCard({ type, delay = 0 }) {
+  const isVector    = type === 'vector'
+  const accent      = isVector ? 'rgba(59,130,246,' : 'rgba(139,92,246,'
+  const textColor   = isVector ? '#60a5fa' : '#a78bfa'
+
+  const cfg = isVector ? {
+    label:       'Vector RAG',
+    Icon:        Zap,
+    tagline:     'Semantic similarity search',
+    description: 'Converts your question into a high-dimensional vector and finds the closest matching document chunks using cosine similarity over a pgvector HNSW index.',
+    bullets:     ['Sub-second lookup — no LLM at retrieval time', 'Best for keyword and semantic queries', 'Powered by Gemini embeddings (768-dim)'],
+  } : {
+    label:       'Vectorless RAG',
+    Icon:        TreePine,
+    tagline:     'LLM-guided tree navigation',
+    description: 'Parses the document into a section hierarchy at ingest time. An LLM then navigates the tree branch-by-branch — no embeddings, just structured document reasoning.',
+    bullets:     ['Follows document structure, not just similarity', 'Best for hierarchical or multi-step queries', 'Powered by Groq Llama 3.3 (70B)'],
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay, ease: 'easeOut' }}
+      className="rounded-2xl border p-5 flex flex-col gap-3"
+      style={{
+        background:  `${accent}0.04)`,
+        borderColor: `${accent}0.22)`,
+        boxShadow:   `0 0 40px ${accent}0.06), inset 0 1px 0 ${accent}0.07)`,
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: `${accent}0.12)`, border: `1px solid ${accent}0.22)` }}
+        >
+          <cfg.Icon className="w-4.5 h-4.5" style={{ color: textColor }} />
+        </div>
+        <div>
+          <span className={isVector ? 'badge-vector' : 'badge-vectorless'}>{cfg.label}</span>
+          <p className="text-xs text-slate-500 mt-0.5">{cfg.tagline}</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-400 leading-relaxed">{cfg.description}</p>
+
+      <ul className="space-y-1.5">
+        {cfg.bullets.map((b, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-slate-500">
+            <span
+              className="shrink-0 rounded-full"
+              style={{ width: 4, height: 4, background: textColor, marginTop: '0.38rem' }}
+            />
+            {b}
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  )
+}
 
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
@@ -75,8 +141,8 @@ function UploadZone({ onUploaded }) {
 
         <div>
           <p className="text-slate-300 text-sm font-medium">
-            {uploading   ? 'Uploading…'
-             : success   ? 'Uploaded — processing started'
+            {uploading    ? 'Uploading…'
+             : success    ? 'Uploaded — processing started'
              : isDragActive ? 'Drop to upload'
              : 'Drag & drop a PDF, or click to browse'}
           </p>
@@ -104,12 +170,12 @@ function UploadZone({ onUploaded }) {
 
 function StatusBadge({ status, pct }) {
   const styles = {
-    ready:        { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80', border: 'rgba(74,222,128,0.20)' },
-    failed:       { bg: 'rgba(248,113,113,0.10)', color: '#f87171', border: 'rgba(248,113,113,0.20)' },
-    pending:      { bg: 'rgba(251,191,36,0.10)',  color: '#fbbf24', border: 'rgba(251,191,36,0.20)' },
-    parsing:      { bg: 'rgba(96,165,250,0.10)',  color: '#60a5fa', border: 'rgba(96,165,250,0.20)' },
-    embedding:    { bg: 'rgba(99,102,241,0.10)',  color: '#818cf8', border: 'rgba(99,102,241,0.20)' },
-    tree_building:{ bg: 'rgba(167,139,250,0.10)', color: '#a78bfa', border: 'rgba(167,139,250,0.20)' },
+    ready:         { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80', border: 'rgba(74,222,128,0.20)' },
+    failed:        { bg: 'rgba(248,113,113,0.10)', color: '#f87171', border: 'rgba(248,113,113,0.20)' },
+    pending:       { bg: 'rgba(251,191,36,0.10)',  color: '#fbbf24', border: 'rgba(251,191,36,0.20)' },
+    parsing:       { bg: 'rgba(96,165,250,0.10)',  color: '#60a5fa', border: 'rgba(96,165,250,0.20)' },
+    embedding:     { bg: 'rgba(99,102,241,0.10)',  color: '#818cf8', border: 'rgba(99,102,241,0.20)' },
+    tree_building: { bg: 'rgba(167,139,250,0.10)', color: '#a78bfa', border: 'rgba(167,139,250,0.20)' },
   }
   const s = styles[status] || { bg: 'rgba(30,45,66,0.6)', color: '#64748b', border: 'rgba(30,45,66,1)' }
   return (
@@ -138,8 +204,8 @@ function DocumentRow({ doc, onDelete, onSelect }) {
       layout
       className="doc-card rounded-xl border p-4 flex items-center gap-4 transition-colors duration-200 group"
       style={{
-        background: 'rgba(15,22,35,0.6)',
-        borderColor: isIngesting ? 'rgba(99,102,241,0.22)' : 'rgba(30,45,66,0.7)',
+        background:   'rgba(15,22,35,0.6)',
+        borderColor:  isIngesting ? 'rgba(99,102,241,0.22)' : 'rgba(30,45,66,0.7)',
       }}
       whileHover={{ borderColor: 'rgba(42,61,88,0.9)' }}
     >
@@ -154,10 +220,10 @@ function DocumentRow({ doc, onDelete, onSelect }) {
         <p className="text-sm font-medium text-slate-200 truncate">{d.filename}</p>
         <p className="text-xs text-slate-600 mt-0.5">
           {[
-            d.page_count  && `${d.page_count} pages`,
+            d.page_count      && `${d.page_count} pages`,
             d.doc_type,
             d.structure_score != null && `structure ${(d.structure_score * 100).toFixed(0)}%`,
-            d.total_chunks && `${d.total_chunks} chunks`,
+            d.total_chunks    && `${d.total_chunks} chunks`,
           ].filter(Boolean).join(' · ')}
         </p>
         {isIngesting && d.progress_pct > 0 && (
@@ -193,9 +259,9 @@ function DocumentRow({ doc, onDelete, onSelect }) {
 // ─── Home page ────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const navigate = useNavigate()
+  const navigate    = useNavigate()
   const queryClient = useQueryClient()
-  const listRef = useRef(null)
+  const listRef     = useRef(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['documents'],
@@ -222,49 +288,84 @@ export default function Home() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-white">Documents</h1>
-        <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">
-          Upload a PDF to index it with both RAG pipelines simultaneously.
-          Financial filings, legal contracts, and technical manuals work best.
+    <div className="space-y-10">
+
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="text-center space-y-3 pt-2"
+      >
+        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+          Two retrieval strategies.{' '}
+          <span className="text-gradient">One question.</span>
+          <br className="hidden sm:block" /> Who wins?
+        </h1>
+        <p className="text-slate-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+          Upload a PDF and ask anything. RAG Arena runs both pipelines in parallel
+          and shows you the answers, latency, and confidence — side by side.
         </p>
+      </motion.section>
+
+      {/* ── Strategy cards ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <StrategyCard type="vector"     delay={0.1} />
+        <StrategyCard type="vectorless" delay={0.2} />
       </div>
 
-      <UploadZone onUploaded={handleUploaded} />
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="skeleton h-16 rounded-xl" />
-          ))}
-        </div>
-      ) : docs.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16 rounded-2xl border"
-          style={{ borderColor: 'rgba(30,45,66,0.4)', borderStyle: 'dashed' }}
+      {/* ── Divider ──────────────────────────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto">
+        <div
+          className="flex items-center gap-3 text-xs text-slate-600 uppercase tracking-widest font-medium"
         >
-          <p className="text-slate-600 text-sm">No documents yet.</p>
-          <p className="text-slate-700 text-xs mt-1">
-            Upload a PDF above — ingestion takes 30–60 seconds.
-          </p>
-        </motion.div>
-      ) : (
-        <div className="space-y-2" ref={listRef}>
-          <AnimatePresence>
-            {docs.map((doc) => (
-              <DocumentRow
-                key={doc.id}
-                doc={doc}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                onSelect={(id) => navigate(`/compare?doc=${id}`)}
-              />
-            ))}
-          </AnimatePresence>
+          <div className="flex-1 h-px" style={{ background: 'rgba(30,45,66,0.7)' }} />
+          upload a document to start
+          <div className="flex-1 h-px" style={{ background: 'rgba(30,45,66,0.7)' }} />
         </div>
-      )}
+      </div>
+
+      {/* ── Upload + document list ────────────────────────────────────────────── */}
+      <div className="max-w-2xl mx-auto space-y-4">
+        <UploadZone onUploaded={handleUploaded} />
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="skeleton h-16 rounded-xl" />
+            ))}
+          </div>
+        ) : docs.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 rounded-2xl border"
+            style={{ borderColor: 'rgba(30,45,66,0.4)', borderStyle: 'dashed' }}
+          >
+            <p className="text-slate-600 text-sm">No documents yet.</p>
+            <p className="text-slate-700 text-xs mt-1">
+              Ingestion takes 30–60 seconds — both pipelines are built simultaneously.
+            </p>
+          </motion.div>
+        ) : (
+          <div className="space-y-2" ref={listRef}>
+            <p className="text-xs text-slate-500 uppercase tracking-widest font-medium px-1">
+              {docs.length} document{docs.length !== 1 ? 's' : ''}
+            </p>
+            <AnimatePresence>
+              {docs.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                  onSelect={(id) => navigate(`/compare?doc=${id}`)}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }

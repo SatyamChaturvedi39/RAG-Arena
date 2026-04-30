@@ -63,12 +63,17 @@ async def upload_document(
     doc_id = str(uuid.uuid4())
     storage_path = f"pdfs/{doc_id}/{file.filename}"
 
-    # Upload to Supabase Storage
-    client.storage.from_("documents").upload(
-        path=storage_path,
-        file=contents,
-        file_options={"content-type": "application/pdf"},
-    )
+    # Upload to Supabase Storage (best-effort — bucket may not exist in local dev)
+    try:
+        client.storage.from_("documents").upload(
+            path=storage_path,
+            file=contents,
+            file_options={"content-type": "application/pdf"},
+        )
+    except Exception as storage_err:
+        # Continue without cloud storage — ingestion works from in-memory bytes
+        storage_path = None
+        print(f"[upload] Supabase Storage unavailable ({storage_err}); proceeding without it.")
 
     # Insert document row
     client.table("documents").insert({

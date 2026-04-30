@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Send, Loader2, Zap, TreePine, ChevronRight } from 'lucide-react'
+import { Send, Loader2, Zap, TreePine, ChevronRight, Upload, MessageSquare, SplitSquareHorizontal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
 import { compareQuery, listDocuments } from '../api/client'
@@ -396,21 +396,74 @@ export default function Compare() {
         )}
       </AnimatePresence>
 
-      {/* Empty state */}
-      {!hasResult && !isLoading && readyDocs.length === 0 && (
+      {/* Prompt state — docs exist but no query yet */}
+      {!hasResult && !isLoading && readyDocs.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="rounded-2xl border py-20 text-center"
+          transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row gap-4"
+        >
+          {[
+            { color: 'vector',     label: 'Vector RAG',     sub: 'Cosine similarity over chunk embeddings',  accent: 'rgba(59,130,246,' },
+            { color: 'vectorless', label: 'Vectorless RAG', sub: 'LLM-guided hierarchical tree navigation',  accent: 'rgba(139,92,246,' },
+          ].map(({ color, label, sub, accent }) => (
+            <div
+              key={color}
+              className="flex-1 rounded-2xl border p-6 flex flex-col items-center justify-center gap-2 text-center"
+              style={{ background: `${accent}0.03)`, borderColor: `${accent}0.14)`, borderStyle: 'dashed' }}
+            >
+              <span className={color === 'vector' ? 'badge-vector' : 'badge-vectorless'}>{label}</span>
+              <p className="text-xs text-slate-600">{sub}</p>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Empty state — how it works */}
+      {!hasResult && !isLoading && readyDocs.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-2xl border py-14 px-8"
           style={{ background: 'rgba(15,22,35,0.4)', borderColor: 'rgba(30,45,66,0.5)', borderStyle: 'dashed' }}
         >
-          <p className="text-slate-600 text-sm">
-            No documents ready.{' '}
-            <a href="/" className="text-accent-400 hover:text-accent-300 transition-colors">
-              Upload a PDF
-            </a>{' '}
-            to get started.
-          </p>
+          <p className="text-center text-sm text-slate-500 mb-10">How it works</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-0">
+            {[
+              { Icon: Upload,                 step: '1', label: 'Upload a PDF',       sub: 'Both pipelines are built simultaneously during ingestion.' },
+              { Icon: MessageSquare,          step: '2', label: 'Ask a question',     sub: 'Type anything — a fact, a concept, a "compare and contrast."' },
+              { Icon: SplitSquareHorizontal,  step: '3', label: 'See who wins',       sub: 'Vector vs Vectorless, latency, confidence, and raw answers.' },
+            ].map(({ Icon, step, label, sub }, i) => (
+              <div key={step} className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0 flex-1 min-w-0">
+                {i > 0 && (
+                  <ChevronRight className="w-4 h-4 text-slate-700 shrink-0 hidden sm:block mb-6 -ml-2 -mr-2 mt-[-20px]" />
+                )}
+                <div className="flex sm:flex-col items-center gap-4 sm:gap-3 flex-1 min-w-0">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.18)' }}
+                  >
+                    <Icon className="w-5 h-5 text-accent-400" />
+                  </div>
+                  <div className="sm:text-center">
+                    <p className="text-sm font-medium text-slate-300">{label}</p>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed max-w-[160px] sm:mx-auto">{sub}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 btn-primary text-sm px-5 py-2"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload a PDF to start
+            </a>
+          </div>
         </motion.div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Scale } from 'lucide-react'
 import Home from './pages/Home'
 import Compare from './pages/Compare'
 import Evaluation from './pages/Evaluation'
@@ -57,9 +58,20 @@ export default function App() {
         >
           <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
             <div className="flex items-center gap-7">
-              <span className="font-mono font-semibold text-base tracking-tight select-none">
-                RAG<span className="text-gradient">Arena</span>
-              </span>
+              <NavLink
+                to="/"
+                className="flex items-center gap-2 select-none group"
+              >
+                <div
+                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}
+                >
+                  <Scale className="w-3.5 h-3.5 text-accent-400" />
+                </div>
+                <span className="font-mono font-semibold text-base tracking-tight">
+                  RAG<span className="text-gradient">Arena</span>
+                </span>
+              </NavLink>
               <nav className="flex items-center gap-0.5">
                 <NavItem to="/">Documents</NavItem>
                 <NavItem to="/compare">Compare</NavItem>
