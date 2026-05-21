@@ -79,11 +79,11 @@ export default function App() {
                 </span>
               </NavLink>
               <nav className="flex items-center gap-0.5">
+                <NavItem to="/dashboard">Dashboard</NavItem>
                 <NavItem to="/">Documents</NavItem>
                 <NavItem to="/compare">Compare</NavItem>
                 <NavItem to="/eval">Evaluation</NavItem>
                 <NavItem to="/history">History</NavItem>
-                <NavItem to="/dashboard">Dashboard</NavItem>
                 <NavItem to="/about">About</NavItem>
               </nav>
             </div>
