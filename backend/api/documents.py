@@ -50,6 +50,7 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     doc_type_hint: Optional[str] = Form(None),
+    session_id: Optional[str] = Form(None),
 ):
     """
     Upload a PDF. Saves to Supabase Storage and kicks off background ingestion
@@ -96,6 +97,7 @@ async def upload_document(
             "storage_path": storage_path,
             "status": "pending",
             "progress_pct": 0,
+            "session_id": session_id,
         }).execute()
     except Exception as db_err:
         print(f"[upload] Database insert failed: {db_err}")
@@ -129,6 +131,7 @@ async def get_document_status(doc_id: str):
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     status: Optional[str] = None,
+    session_id: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
 ):
@@ -140,6 +143,8 @@ async def list_documents(
 
     if status:
         query = query.eq("status", status)
+    if session_id:
+        query = query.eq("session_id", session_id)
 
     result = query.execute()
     return DocumentListResponse(items=result.data or [], total=result.count or 0)

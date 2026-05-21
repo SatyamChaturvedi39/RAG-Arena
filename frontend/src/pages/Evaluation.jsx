@@ -388,6 +388,21 @@ function EvalRunCard({ run, onSelect, onDelete, isSelected }) {
   )
 }
 
+const SAMPLE_CUSTOM_JSON = `[
+  {
+    "question": "What is the total revenue of the company for FY2023?",
+    "answer": "$45.2 billion",
+    "doc_name": "annual_report",
+    "doc_type": "financial"
+  },
+  {
+    "question": "What are the primary risk factors mentioned?",
+    "answer": "Primary risks include supply chain disruptions, competitive pricing pressures, and regulatory changes.",
+    "doc_name": "annual_report",
+    "doc_type": "financial"
+  }
+]`
+
 // ─── Evaluation page ──────────────────────────────────────────────────────────
 
 export default function Evaluation() {
@@ -395,6 +410,10 @@ export default function Evaluation() {
   const [selectedRunId, setSelectedRunId] = useState(null)
   const [dataset, setDataset] = useState('financebench')
   const [maxQ, setMaxQ] = useState(50)
+  
+  // Custom dataset editor states
+  const [customJsonText, setCustomJsonText] = useState('')
+  const [customJsonError, setCustomJsonError] = useState(null)
 
   const { data: runs = [], isLoading: runsLoading, isError: runsError } = useQuery({
     queryKey: ['eval-runs'],
@@ -412,7 +431,17 @@ export default function Evaluation() {
   })
 
   const startMutation = useMutation({
-    mutationFn: () => startEvalRun(dataset, maxQ).then((r) => r.data),
+    mutationFn: () => {
+      let customQuestions = null
+      if (dataset === 'custom' && customJsonText.trim()) {
+        try {
+          customQuestions = JSON.parse(customJsonText)
+        } catch (e) {
+          throw new Error('Please fix the invalid JSON before starting.')
+        }
+      }
+      return startEvalRun(dataset, maxQ, null, customQuestions).then((r) => r.data)
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['eval-runs'] })
       setSelectedRunId(data.eval_run_id)
@@ -426,6 +455,51 @@ export default function Evaluation() {
       if (selectedRunId === deletedId) setSelectedRunId(null)
     },
   })
+
+  const handleLoadSample = () => {
+    setCustomJsonText(SAMPLE_CUSTOM_JSON)
+    setCustomJsonError(null)
+  }
+
+  const handleJsonChange = (val) => {
+    setCustomJsonText(val)
+    if (!val.trim()) {
+      setCustomJsonError(null)
+      return
+    }
+    try {
+      const parsed = JSON.parse(val)
+      if (!Array.isArray(parsed)) {
+        setCustomJsonError('JSON must be a list (array) of QA objects.')
+        return
+      }
+      for (let i = 0; i < parsed.length; i++) {
+        const item = parsed[i]
+        if (!item.question || !item.answer) {
+          setCustomJsonError(`Entry #${i + 1} is missing 'question' or 'answer'.`)
+          return
+        }
+      }
+      setCustomJsonError(null)
+    } catch (err) {
+      setCustomJsonError(`Invalid JSON: ${err.message}`)
+    }
+  }
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const text = evt.target?.result
+      if (typeof text === 'string') {
+        handleJsonChange(text)
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const isStartDisabled = startMutation.isPending || (dataset === 'custom' && (!customJsonText.trim() || !!customJsonError))
 
   return (
     <div className="space-y-6">
@@ -464,7 +538,7 @@ export default function Evaluation() {
           </div>
           <button
             onClick={() => startMutation.mutate()}
-            disabled={startMutation.isPending}
+            disabled={isStartDisabled}
             className="btn-primary flex items-center gap-2"
           >
             {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
@@ -474,6 +548,72 @@ export default function Evaluation() {
             ⚠ ~7 Groq API calls per question · 50 questions ≈ 10 min
           </p>
         </div>
+
+        {dataset === 'custom' && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-5 pt-5 border-t overflow-hidden"
+            style={{ borderColor: 'rgba(30,45,66,0.5)' }}
+          >
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-white mb-1">Custom Q&A Dataset</h3>
+                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                  Upload a JSON file or paste Q&A pairs directly below. Each item must have a <code>question</code> and an <code>answer</code>. The <code>doc_name</code> should be a substring of the uploaded PDF filename to match against.
+                </p>
+              </div>
+
+              <div className="flex gap-4 flex-wrap items-center">
+                <label className="btn-secondary text-xs flex items-center gap-2 cursor-pointer">
+                  <span>Upload JSON File</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleLoadSample}
+                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors"
+                >
+                  Load Sample Template
+                </button>
+              </div>
+
+              <div className="relative">
+                <textarea
+                  value={customJsonText}
+                  onChange={(e) => handleJsonChange(e.target.value)}
+                  placeholder={`[\n  {\n    "question": "your question here",\n    "answer": "ground truth answer here",\n    "doc_name": "filename_substring",\n    "doc_type": "financial"\n  }\n]`}
+                  className="font-mono text-xs w-full h-44 rounded-xl border p-3.5 focus:outline-none"
+                  style={{
+                    background: 'rgba(10, 15, 26, 0.8)',
+                    borderColor: 'rgba(30, 45, 66, 0.7)',
+                    color: '#e2e8f0',
+                  }}
+                />
+                
+                {/* Real-time validation badge */}
+                <div className="absolute bottom-3 right-3 text-xs">
+                  {customJsonError ? (
+                    <span className="text-red-400 bg-red-950/40 border border-red-500/20 px-2.5 py-1 rounded-md">
+                      ✗ {customJsonError}
+                    </span>
+                  ) : customJsonText.trim() ? (
+                    <span className="text-green-400 bg-green-950/40 border border-green-500/20 px-2.5 py-1 rounded-md">
+                      ✓ JSON is valid
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Main layout */}

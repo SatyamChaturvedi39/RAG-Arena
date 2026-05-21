@@ -165,9 +165,10 @@ async def run_custom(
     run_id: str,
     max_questions: int = 50,
     document_ids: Optional[list[str]] = None,
+    custom_questions: Optional[list[dict]] = None,
 ) -> list[dict]:
     """
-    Run evaluation on eval/data/custom_dataset.json.
+    Run evaluation on eval/data/custom_dataset.json or custom_questions.
     No HuggingFace dependency — useful for smoke-testing with hand-crafted QA pairs.
 
     Dataset format (array of objects):
@@ -175,15 +176,18 @@ async def run_custom(
 
     doc_name is matched against documents.filename via ILIKE '%doc_name[:20]%'.
     """
-    with open(_CUSTOM_DATASET_PATH, encoding="utf-8") as f:
-        raw = json.load(f)
+    if custom_questions is not None:
+        raw = custom_questions
+    else:
+        with open(_CUSTOM_DATASET_PATH, encoding="utf-8") as f:
+            raw = json.load(f)
 
     # Strip meta-comment entries (keys starting with "_")
     questions = [item for item in raw if "question" in item][:max_questions]
 
     if not questions:
         raise ValueError(
-            "custom_dataset.json contains no QA entries. "
+            "No QA entries found. "
             "Add objects with 'question', 'answer', 'doc_name' keys."
         )
 

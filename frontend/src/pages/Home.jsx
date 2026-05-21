@@ -76,6 +76,15 @@ function StrategyCard({ type, delay = 0 }) {
 
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
+const getSessionId = () => {
+  let sid = sessionStorage.getItem('rag_arena_session_id')
+  if (!sid) {
+    sid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    sessionStorage.setItem('rag_arena_session_id', sid)
+  }
+  return sid
+}
+
 function UploadZone({ onUploaded }) {
   const [uploading, setUploading] = useState(false)
   const [success,   setSuccess]   = useState(false)
@@ -88,7 +97,8 @@ function UploadZone({ onUploaded }) {
     setSuccess(false)
     setUploading(true)
     try {
-      const res = await uploadDocument(file)
+      const sessionId = getSessionId()
+      const res = await uploadDocument(file, null, sessionId)
       onUploaded(res.data.document_id)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
@@ -276,7 +286,7 @@ export default function Home() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['documents'],
-    queryFn: () => listDocuments().then((r) => r.data),
+    queryFn: () => listDocuments({ session_id: getSessionId() }).then((r) => r.data),
     refetchInterval: 5000,
   })
 

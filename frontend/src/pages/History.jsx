@@ -55,7 +55,7 @@ export default function History() {
       const sessionId = getSessionId()
       const [historyRes, docsRes] = await Promise.all([
         getQueryHistory(selectedDocId || null, limit, currentOffset, sessionId),
-        listDocuments()
+        listDocuments({ session_id: sessionId })
       ])
 
       setDocuments(docsRes.data.documents || [])

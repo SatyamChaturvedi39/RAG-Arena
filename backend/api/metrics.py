@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter
 from db.supabase_client import get_client
 
@@ -10,12 +11,15 @@ async def metrics_summary(days: int = 7):
     Aggregate stats for the dashboard: win rates, avg latency, query distribution.
     """
     client = get_client()
+    
+    # Calculate ISO timestamp for query filter
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
     # Total queries in the window
     queries_result = (
         client.table("queries")
         .select("id,query_type,router_recommended", count="exact")
-        .gte("created_at", f"now() - interval '{days} days'")
+        .gte("created_at", cutoff)
         .execute()
     )
     queries = queries_result.data or []
@@ -34,7 +38,7 @@ async def metrics_summary(days: int = 7):
     results = (
         client.table("pipeline_results")
         .select("pipeline,latency_ms")
-        .gte("created_at", f"now() - interval '{days} days'")
+        .gte("created_at", cutoff)
         .execute()
     ).data or []
 

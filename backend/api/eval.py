@@ -14,6 +14,7 @@ class EvalRunRequest(BaseModel):
     document_ids: Optional[list[str]] = None
     max_questions: int = 50
     session_tag: Optional[str] = None
+    custom_questions: Optional[list[dict]] = None
 
 
 @router.post("/run")
@@ -85,6 +86,7 @@ async def _run_eval(run_id: str, req: EvalRunRequest):
                 run_id=run_id,
                 max_questions=req.max_questions,
                 document_ids=req.document_ids,
+                custom_questions=req.custom_questions,
             )
         else:
             from eval.financebench_runner import run_financebench

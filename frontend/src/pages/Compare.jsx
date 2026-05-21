@@ -323,7 +323,7 @@ export default function Compare() {
 
   const { data: docsData } = useQuery({
     queryKey: ['documents', 'ready'],
-    queryFn: () => listDocuments({ status: 'ready' }).then((r) => r.data),
+    queryFn: () => listDocuments({ status: 'ready', session_id: getSessionId() }).then((r) => r.data),
   })
   const readyDocs = docsData?.items || []
 

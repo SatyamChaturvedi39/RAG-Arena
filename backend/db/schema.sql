@@ -38,12 +38,15 @@ CREATE TABLE IF NOT EXISTS documents (
     -- Supabase Storage URL (never use local disk — Fly.io is ephemeral)
     storage_path    TEXT,
 
+    session_id      TEXT,              -- client-side UUID grouping a user session
+
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_documents_status   ON documents(status);
 CREATE INDEX IF NOT EXISTS idx_documents_doc_type ON documents(doc_type);
+CREATE INDEX IF NOT EXISTS idx_documents_session  ON documents(session_id);
 
 -- Auto-update updated_at on every row change
 CREATE OR REPLACE FUNCTION update_updated_at()

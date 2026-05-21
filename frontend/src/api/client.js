@@ -11,10 +11,11 @@ const api = axios.create({
 
 // ─── Documents ───────────────────────────────────────────────────────────────
 
-export const uploadDocument = (file, docTypeHint) => {
+export const uploadDocument = (file, docTypeHint, sessionId = null) => {
   const form = new FormData()
   form.append('file', file)
   if (docTypeHint) form.append('doc_type_hint', docTypeHint)
+  if (sessionId) form.append('session_id', sessionId)
   return api.post('/documents/upload', form)
 }
 
@@ -62,8 +63,13 @@ export const getVoteStats = () =>
 
 // ─── Evaluation ──────────────────────────────────────────────────────────────
 
-export const startEvalRun = (dataset, maxQuestions, sessionTag) =>
-  api.post('/eval/run', { dataset, max_questions: maxQuestions, session_tag: sessionTag })
+export const startEvalRun = (dataset, maxQuestions, sessionTag, customQuestions = null) =>
+  api.post('/eval/run', {
+    dataset,
+    max_questions: maxQuestions,
+    session_tag: sessionTag,
+    custom_questions: customQuestions,
+  })
 
 export const listEvalRuns = () =>
   api.get('/eval/runs')
