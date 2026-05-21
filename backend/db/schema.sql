@@ -233,3 +233,25 @@ CREATE TABLE IF NOT EXISTS evaluation_runs (
     run_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at    TIMESTAMPTZ
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- user_votes
+-- Feedback logging. Users vote which answer was better (vector, vectorless, or tie).
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_votes (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    query_id        UUID NOT NULL REFERENCES queries(id) ON DELETE CASCADE,
+    winner          TEXT NOT NULL CHECK (winner IN ('vector', 'vectorless', 'tie')),
+    session_id      TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensure one vote per session per query.
+    -- If session_id is NULL, multiple votes are allowed but typically the client
+    -- sends a persistent UUID.
+    UNIQUE(query_id, session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_votes_query   ON user_votes(query_id);
+CREATE INDEX IF NOT EXISTS idx_user_votes_winner  ON user_votes(winner);
+CREATE INDEX IF NOT EXISTS idx_user_votes_session ON user_votes(session_id);
+

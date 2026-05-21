@@ -4,12 +4,15 @@ import { Scale } from 'lucide-react'
 import Home from './pages/Home'
 import Compare from './pages/Compare'
 import Evaluation from './pages/Evaluation'
+import History from './pages/History'
+import Dashboard from './pages/Dashboard'
+import About from './pages/About'
 import ServerStatus from './components/ServerStatus'
 
 const pageVariants = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } },
-  exit:    { opacity: 0, y: -6, transition: { duration: 0.14 } },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.14 } },
 }
 
 function AnimatedRoutes() {
@@ -17,21 +20,24 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/"       element={<motion.div {...pageVariants}><Home /></motion.div>} />
+        <Route path="/" element={<motion.div {...pageVariants}><Home /></motion.div>} />
         <Route path="/compare" element={<motion.div {...pageVariants}><Compare /></motion.div>} />
-        <Route path="/eval"    element={<motion.div {...pageVariants}><Evaluation /></motion.div>} />
+        <Route path="/eval" element={<motion.div {...pageVariants}><Evaluation /></motion.div>} />
+        <Route path="/history" element={<motion.div {...pageVariants}><History /></motion.div>} />
+        <Route path="/dashboard" element={<motion.div {...pageVariants}><Dashboard /></motion.div>} />
+        <Route path="/about" element={<motion.div {...pageVariants}><About /></motion.div>} />
       </Routes>
     </AnimatePresence>
   )
 }
+
 
 function NavItem({ to, children }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-          isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+        `px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
         }`
       }
       style={({ isActive }) => isActive ? {
@@ -76,6 +82,9 @@ export default function App() {
                 <NavItem to="/">Documents</NavItem>
                 <NavItem to="/compare">Compare</NavItem>
                 <NavItem to="/eval">Evaluation</NavItem>
+                <NavItem to="/history">History</NavItem>
+                <NavItem to="/dashboard">Dashboard</NavItem>
+                <NavItem to="/about">About</NavItem>
               </nav>
             </div>
             <ServerStatus />
@@ -87,10 +96,10 @@ export default function App() {
         </main>
 
         <footer
-          className="border-t py-4 text-center text-xs text-slate-600"
+          className="border-t py-4 text-center text-s text-slate-600"
           style={{ borderColor: 'rgba(30, 45, 66, 0.5)' }}
         >
-          RAG-Arena · open source · free tier only ·{' '}
+          RAG-Arena ·{' '}
           <a
             href="https://github.com/SatyamChaturvedi39/RAG-Arena"
             target="_blank"

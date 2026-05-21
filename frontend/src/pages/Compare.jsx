@@ -1,17 +1,41 @@
 import { useState, useRef, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link, useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Send, Loader2, Zap, TreePine, ChevronRight, Upload, MessageSquare, SplitSquareHorizontal } from 'lucide-react'
+import {
+  Send,
+  Loader2,
+  Zap,
+  TreePine,
+  ChevronRight,
+  Upload,
+  MessageSquare,
+  SplitSquareHorizontal,
+  Copy,
+  Check,
+  Download,
+  ThumbsUp,
+  Award,
+  AlertCircle
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
-import { compareQuery, listDocuments } from '../api/client'
+import { compareQuery, listDocuments, submitVote, getVoteTally } from '../api/client'
 import clsx from 'clsx'
+
+const getSessionId = () => {
+  let sid = sessionStorage.getItem('rag_arena_session_id')
+  if (!sid) {
+    sid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    sessionStorage.setItem('rag_arena_session_id', sid)
+  }
+  return sid
+}
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
 function PanelSkeleton({ color }) {
   const isVector = color === 'vector'
-  const accentColor = isVector ? 'rgba(59,130,246,' : 'rgba(139,92,246,'
+  const accentColor = isVector ? 'rgba(245,158,11,' : 'rgba(16,185,129,'
   return (
     <div
       className="flex-1 min-w-0 rounded-2xl border p-5 flex flex-col gap-4"
@@ -35,7 +59,7 @@ function PanelSkeleton({ color }) {
               key={i}
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                background: isVector ? '#60a5fa' : '#a78bfa',
+                background: isVector ? '#f59e0b' : '#10b981',
                 opacity: 0.4,
                 animation: `glow-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
               }}
@@ -50,7 +74,7 @@ function PanelSkeleton({ color }) {
 
 // ─── Latency comparison bar ───────────────────────────────────────────────────
 
-function LatencyBar({ vectorMs, vectorlessMs }) {
+function LatencyBar({ vectorMs, vectorlessMs, handleExport }) {
   if (!vectorMs || !vectorlessMs) return null
   const total = vectorMs + vectorlessMs
   const vPct = Math.round((vectorMs / total) * 100)
@@ -68,17 +92,26 @@ function LatencyBar({ vectorMs, vectorlessMs }) {
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-slate-500 uppercase tracking-widest font-medium">Latency comparison</span>
-        <span className="text-xs text-slate-500">
-          {fasterIsVector
-            ? <span className="text-vector-400">Vector RAG</span>
-            : <span className="text-vectorless-400">Vectorless RAG</span>
-          }
-          {' '}was <span className="text-green-400 font-semibold">{speedup}× faster</span>
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-slate-400">
+            {fasterIsVector
+              ? <span className="text-amber-400 font-semibold">Vector RAG</span>
+              : <span className="text-emerald-400 font-semibold">Vectorless RAG</span>
+            }
+            {' '}was <span className="text-green-400 font-semibold">{speedup}× faster</span>
+          </span>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition-colors"
+            title="Download full JSON diagnostics"
+          >
+            <Download className="w-3.5 h-3.5" /> JSON Export
+          </button>
+        </div>
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-vector-400 w-20 shrink-0">Vector</span>
+          <span className="text-xs text-amber-500 w-20 shrink-0">Vector</span>
           <div className="flex-1 latency-bar-track">
             <div className="latency-bar-fill-vector" style={{ width: `${vPct}%` }} />
           </div>
@@ -86,7 +119,7 @@ function LatencyBar({ vectorMs, vectorlessMs }) {
           {fasterIsVector && <span className="badge-winner text-xs">⚡ FASTER</span>}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-vectorless-400 w-20 shrink-0">Vectorless</span>
+          <span className="text-xs text-emerald-500 w-20 shrink-0">Vectorless</span>
           <div className="flex-1 latency-bar-track">
             <div className="latency-bar-fill-vectorless" style={{ width: `${vlPct}%` }} />
           </div>
@@ -103,8 +136,8 @@ function LatencyBar({ vectorMs, vectorlessMs }) {
 function RouterBadge({ router }) {
   if (!router) return null
   const isVectorless = router.recommended === 'vectorless'
-  const accentColor = isVectorless ? 'rgba(139,92,246,' : 'rgba(59,130,246,'
-  const textColor   = isVectorless ? '#a78bfa' : '#60a5fa'
+  const accentColor = isVectorless ? 'rgba(16,185,129,' : 'rgba(245,158,11,'
+  const textColor   = isVectorless ? '#34d399' : '#fbbf24'
 
   return (
     <motion.div
@@ -124,7 +157,7 @@ function RouterBadge({ router }) {
             Router Recommendation
           </p>
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <span className={clsx('text-sm font-semibold', isVectorless ? 'text-vectorless-400' : 'text-vector-400')}>
+            <span className={clsx('text-sm font-semibold', isVectorless ? 'text-emerald-400' : 'text-amber-500')}>
               {isVectorless ? 'Vectorless RAG' : 'Vector RAG'}
             </span>
             <span
@@ -146,9 +179,10 @@ function RouterBadge({ router }) {
 function AnswerPanel({ color, result, delay = 0 }) {
   const isVector   = color === 'vector'
   const label      = isVector ? 'Vector RAG' : 'Vectorless RAG'
-  const accentColor = isVector ? 'rgba(59,130,246,' : 'rgba(139,92,246,'
-  const textColor   = isVector ? '#60a5fa' : '#a78bfa'
+  const accentColor = isVector ? 'rgba(245, 158, 11,' : 'rgba(16, 185, 129,'
+  const textColor   = isVector ? '#fbbf24' : '#34d399'
   const chunksRef  = useRef(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!result || result.error) return
@@ -157,6 +191,13 @@ function AnswerPanel({ color, result, delay = 0 }) {
       gsap.from(items, { opacity: 0, y: 12, stagger: 0.07, duration: 0.4, ease: 'power2.out', delay: 0.1 })
     }
   }, [result])
+
+  const handleCopy = () => {
+    if (!result || result.error) return
+    navigator.clipboard.writeText(result.answer)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <motion.div
@@ -177,14 +218,33 @@ function AnswerPanel({ color, result, delay = 0 }) {
       <div className="flex items-center justify-between">
         <span className={isVector ? 'badge-vector' : 'badge-vectorless'}>{label}</span>
         {result && !result.error && (
-          <motion.span
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-xs text-slate-500 font-mono tabular-nums"
+            className="flex items-center gap-3 text-xs text-slate-500 font-mono tabular-nums"
           >
-            {result.latency_ms}ms · {(result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0)} tok
-          </motion.span>
+            <span>{result.latency_ms}ms</span>
+            <span className="text-slate-700">·</span>
+            <div 
+              className="flex flex-col items-end gap-1 cursor-help" 
+              title={`Prompt: ${result.llm_prompt_tokens || 0} | Completion: ${result.llm_completion_tokens || 0}`}
+            >
+              <span>{(result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0)} tok</span>
+              <div className="flex w-12 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(63,63,70,0.8)' }}>
+                <div className="bg-zinc-500" style={{ width: `${((result.llm_prompt_tokens || 0) / Math.max(1, (result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0))) * 100}%` }} />
+                <div style={{ background: isVector ? '#fbbf24' : '#34d399', width: `${((result.llm_completion_tokens || 0) / Math.max(1, (result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0))) * 100}%` }} />
+              </div>
+            </div>
+            <span className="text-slate-700">·</span>
+            <button
+              onClick={handleCopy}
+              className="p-1 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
+              title="Copy to clipboard"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </motion.div>
         )}
       </div>
 
@@ -198,7 +258,7 @@ function AnswerPanel({ color, result, delay = 0 }) {
               <p className="text-xs text-red-400/70">{result.error}</p>
             </div>
           ) : (
-            <p className="text-sm leading-relaxed text-slate-200 answer-text">{result.answer}</p>
+            <p className="text-sm leading-relaxed text-zinc-200 answer-text whitespace-pre-line">{result.answer}</p>
           )}
 
           {result.chunks && result.chunks.length > 0 && (
@@ -211,12 +271,12 @@ function AnswerPanel({ color, result, delay = 0 }) {
               <div className="mt-2 space-y-2">
                 {result.chunks.map((c, i) => (
                   <div key={i} className="chunk-item rounded-xl p-3 text-xs border"
-                    style={{ background: 'rgba(15,22,35,0.8)', borderColor: 'rgba(30,45,66,0.7)' }}>
-                    <div className="flex justify-between text-slate-600 mb-1.5 font-mono">
+                    style={{ background: 'rgba(24, 24, 27, 0.8)', borderColor: 'rgba(39, 39, 42, 0.7)' }}>
+                    <div className="flex justify-between text-zinc-500 mb-1.5 font-mono">
                       <span>{c.page != null ? `Page ${c.page + 1}` : '—'}</span>
                       <span style={{ color: textColor }}>{(c.similarity * 100).toFixed(1)}% match</span>
                     </div>
-                    <p className="text-slate-400 line-clamp-3 leading-relaxed">{c.text}</p>
+                    <p className="text-zinc-300 line-clamp-3 leading-relaxed">{c.text}</p>
                   </div>
                 ))}
               </div>
@@ -231,10 +291,10 @@ function AnswerPanel({ color, result, delay = 0 }) {
                 Navigation · {result.nodes_visited_count} LLM call{result.nodes_visited_count !== 1 ? 's' : ''}
               </summary>
               <div className="mt-2 rounded-xl p-3 border"
-                style={{ background: 'rgba(15,22,35,0.8)', borderColor: 'rgba(30,45,66,0.7)' }}>
-                <p className="text-xs font-mono text-slate-400 leading-relaxed">{result.navigation_path}</p>
+                style={{ background: 'rgba(24, 24, 27, 0.8)', borderColor: 'rgba(39, 39, 42, 0.7)' }}>
+                <p className="text-xs font-mono text-zinc-400 leading-relaxed">{result.navigation_path}</p>
                 {result.fallback_used && (
-                  <p className="mt-2 text-xs text-yellow-500/80">⚠ Fallback mode — low-structure document</p>
+                  <p className="mt-2 text-xs text-amber-500/80">⚠ Fallback mode — low-structure document</p>
                 )}
               </div>
             </details>
@@ -249,11 +309,17 @@ function AnswerPanel({ color, result, delay = 0 }) {
 
 export default function Compare() {
   const [searchParams] = useSearchParams()
-  const preselectedDocId = searchParams.get('doc')
+  const location = useLocation()
+  const preselectedDocId = searchParams.get('doc') || location.state?.documentId
 
   const [selectedDocId, setSelectedDocId] = useState(preselectedDocId || '')
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(location.state?.query || '')
   const [result, setResult] = useState(null)
+  
+  // Feedback voting states
+  const [voted, setVoted] = useState(false)
+  const [voting, setVoting] = useState(false)
+  const [voteTally, setVoteTally] = useState(null)
 
   const { data: docsData } = useQuery({
     queryKey: ['documents', 'ready'],
@@ -262,15 +328,57 @@ export default function Compare() {
   const readyDocs = docsData?.items || []
 
   const compareMutation = useMutation({
-    mutationFn: () => compareQuery(selectedDocId, query).then((r) => r.data),
-    onSuccess: (data) => setResult(data),
+    mutationFn: () => compareQuery(selectedDocId, query, null, getSessionId()).then((r) => r.data),
+    onSuccess: (data) => {
+      setResult(data)
+      setVoted(false)
+      setVoteTally(null)
+    },
   })
+
+  // Auto-run if deep linked via query replay (History page)
+  useEffect(() => {
+    if (location.state?.documentId && location.state?.query) {
+      setSelectedDocId(location.state.documentId)
+      setQuery(location.state.query)
+      setResult(null)
+      compareMutation.mutate()
+    }
+  }, [location.state])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!selectedDocId || !query.trim()) return
     setResult(null)
     compareMutation.mutate()
+  }
+
+  const handleVote = async (winner) => {
+    if (!result?.query_id) return
+    setVoting(true)
+    try {
+      await submitVote(result.query_id, winner, getSessionId())
+      setVoted(true)
+      
+      // Fetch fresh tallies
+      const tallyRes = await getVoteTally(result.query_id)
+      setVoteTally(tallyRes.data)
+    } catch (err) {
+      console.error('Failed to submit vote:', err)
+    } finally {
+      setVoting(false)
+    }
+  }
+
+  const handleExport = () => {
+    if (!result) return
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2))
+    const downloadAnchor = document.createElement('a')
+    downloadAnchor.setAttribute("href", dataStr)
+    downloadAnchor.setAttribute("download", `rag_arena_compare_${result.query_id}.json`)
+    document.body.appendChild(downloadAnchor)
+    downloadAnchor.click()
+    downloadAnchor.remove()
   }
 
   const isLoading = compareMutation.isPending
@@ -296,11 +404,11 @@ export default function Compare() {
           backdropFilter: 'blur(12px)',
         }}
       >
-        <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+        <div className="flex gap-3 flex-col sm:flex-row">
           <select
             value={selectedDocId}
             onChange={(e) => setSelectedDocId(e.target.value)}
-            className="input w-48 shrink-0"
+            className="input w-full sm:w-48 shrink-0"
           >
             <option value="">Select document…</option>
             {readyDocs.map((d) => (
@@ -320,7 +428,7 @@ export default function Compare() {
           <button
             type="submit"
             disabled={!selectedDocId || !query.trim() || isLoading}
-            className="btn-primary flex items-center gap-2 shrink-0 px-5"
+            className="btn-primary flex items-center justify-center gap-2 shrink-0 px-5 w-full sm:w-auto"
           >
             {isLoading
               ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -330,7 +438,8 @@ export default function Compare() {
         </div>
 
         {compareMutation.isError && (
-          <p className="mt-3 text-xs text-red-400">
+          <p className="mt-3 text-xs text-red-400 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" />
             {compareMutation.error?.response?.data?.detail || 'Request failed — check backend logs'}
           </p>
         )}
@@ -346,12 +455,12 @@ export default function Compare() {
             className="flex items-center gap-3 px-1"
           >
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <Zap className="w-3.5 h-3.5 text-vector-400" />
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
               <span>Vector RAG running…</span>
             </div>
             <span className="text-slate-700">·</span>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <TreePine className="w-3.5 h-3.5 text-vectorless-400" />
+              <TreePine className="w-3.5 h-3.5 text-emerald-500" />
               <span>Vectorless RAG navigating tree…</span>
             </div>
           </motion.div>
@@ -370,7 +479,65 @@ export default function Compare() {
           <LatencyBar
             vectorMs={result.vector.latency_ms}
             vectorlessMs={result.vectorless.latency_ms}
+            handleExport={handleExport}
           />
+        )}
+      </AnimatePresence>
+
+      {/* User voting / Crowdsourced Feedback */}
+      <AnimatePresence>
+        {hasResult && !isLoading && !result.vector?.error && !result.vectorless?.error && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+            className="card p-5 border-indigo-500/20 bg-indigo-500/5 flex flex-col md:flex-row items-center justify-between gap-4"
+          >
+            <div className="space-y-1">
+              <h4 className="font-semibold text-zinc-100 flex items-center gap-1.5 text-sm">
+                <ThumbsUp className="w-4 h-4 text-indigo-400" />
+                Which pipeline gave the better answer?
+              </h4>
+              <p className="text-xs text-zinc-400">
+                Help us evaluate relative quality. Your preference logs crowdsourced research telemetry.
+              </p>
+            </div>
+
+            {voted ? (
+              <div className="text-sm font-semibold text-emerald-400 flex flex-col items-end gap-1">
+                <span className="flex items-center gap-1.5"><Award className="w-4 h-4" /> Preference Recorded!</span>
+                {voteTally && (
+                  <span className="text-[10px] text-zinc-500 font-mono">
+                    Tally: Vector {voteTally.vector_votes} | Vectorless {voteTally.vectorless_votes} | Ties {voteTally.tie_votes}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2 w-full md:w-auto shrink-0 justify-center">
+                <button
+                  onClick={() => handleVote('vector')}
+                  disabled={voting}
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-amber-500/20 hover:border-amber-500/40 hover:text-amber-400 w-full md:w-auto justify-center"
+                >
+                  Vector RAG
+                </button>
+                <button
+                  onClick={() => handleVote('vectorless')}
+                  disabled={voting}
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-400 w-full md:w-auto justify-center"
+                >
+                  Vectorless RAG
+                </button>
+                <button
+                  onClick={() => handleVote('tie')}
+                  disabled={voting}
+                  className="btn-secondary text-xs px-3 py-1.5 hover:border-blue-500/40 hover:text-blue-400 w-full md:w-auto justify-center"
+                >
+                  It's a Tie
+                </button>
+              </div>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -382,14 +549,14 @@ export default function Compare() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex gap-4"
+            className="flex flex-col md:flex-row gap-4"
           >
             <PanelSkeleton color="vector" />
             <PanelSkeleton color="vectorless" />
           </motion.div>
         )}
         {hasResult && !isLoading && (
-          <motion.div key="results" className="flex gap-4">
+          <motion.div key="results" className="flex flex-col md:flex-row gap-4">
             <AnswerPanel color="vector"     result={result?.vector}     delay={0}    />
             <AnswerPanel color="vectorless" result={result?.vectorless} delay={0.08} />
           </motion.div>
@@ -405,8 +572,8 @@ export default function Compare() {
           className="flex flex-col sm:flex-row gap-4"
         >
           {[
-            { color: 'vector',     label: 'Vector RAG',     sub: 'Cosine similarity over chunk embeddings',  accent: 'rgba(59,130,246,' },
-            { color: 'vectorless', label: 'Vectorless RAG', sub: 'LLM-guided hierarchical tree navigation',  accent: 'rgba(139,92,246,' },
+            { color: 'vector',     label: 'Vector RAG',     sub: 'Cosine similarity over chunk embeddings',  accent: 'rgba(245,158,11,' },
+            { color: 'vectorless', label: 'Vectorless RAG', sub: 'LLM-guided hierarchical tree navigation',  accent: 'rgba(16,185,129,' },
           ].map(({ color, label, sub, accent }) => (
             <div
               key={color}
@@ -456,13 +623,13 @@ export default function Compare() {
             ))}
           </div>
           <div className="mt-10 text-center">
-            <a
-              href="/"
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 btn-primary text-sm px-5 py-2"
             >
               <Upload className="w-3.5 h-3.5" />
               Upload a PDF to start
-            </a>
+            </Link>
           </div>
         </motion.div>
       )}

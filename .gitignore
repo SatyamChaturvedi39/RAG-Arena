@@ -55,3 +55,9 @@ eval/data/*.json.gz
 # Living session docs — committed once as baseline, not re-committed each session
 CLAUDE.md
 NOTES.md
+
+# Private internals reference — never push to GitHub
+INTERNALS.md
+
+*md
+!README.md

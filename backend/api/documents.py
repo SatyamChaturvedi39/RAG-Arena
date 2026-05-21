@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from typing import Optional
 
@@ -10,6 +11,10 @@ from db.supabase_client import get_client
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
+
+MAX_FILE_SIZE_MB = 50
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
 # ─── Response models ─────────────────────────────────────────────────────────
@@ -57,6 +62,13 @@ async def upload_document(
     contents = await file.read()
     if len(contents) == 0:
         raise HTTPException(status_code=400, detail="Empty file.")
+    if len(contents) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large ({len(contents) / 1024 / 1024:.1f}MB). Maximum is {MAX_FILE_SIZE_MB}MB.",
+        )
+
+    logger.info("Upload: %s (%.1fMB)", file.filename, len(contents) / 1024 / 1024)
 
     # Create document record in DB
     client = get_client()
@@ -76,14 +88,18 @@ async def upload_document(
         print(f"[upload] Supabase Storage unavailable ({storage_err}); proceeding without it.")
 
     # Insert document row
-    client.table("documents").insert({
-        "id": doc_id,
-        "filename": file.filename,
-        "file_size_bytes": len(contents),
-        "storage_path": storage_path,
-        "status": "pending",
-        "progress_pct": 0,
-    }).execute()
+    try:
+        client.table("documents").insert({
+            "id": doc_id,
+            "filename": file.filename,
+            "file_size_bytes": len(contents),
+            "storage_path": storage_path,
+            "status": "pending",
+            "progress_pct": 0,
+        }).execute()
+    except Exception as db_err:
+        print(f"[upload] Database insert failed: {db_err}")
+        raise HTTPException(status_code=503, detail="Failed to connect to the database. Please check your network connection.")
 
     # Kick off ingestion in the background
     background_tasks.add_task(_run_ingestion, doc_id, contents, doc_type_hint)

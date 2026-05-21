@@ -5,13 +5,23 @@ Uses the Supabase Python client for most operations (simple CRUD).
 Raw asyncpg is used only for the pgvector cosine similarity query because
 the Supabase client doesn't support the <=> operator natively.
 
+Connection pooling: asyncpg pool is created once at startup and reused
+across all requests. This prevents connection exhaustion under load.
+
 IMPORTANT: Always use the Transaction pooler URL (port 6543) from Supabase
 dashboard, not the direct connection. Fly.io instances share limited DB
 connections and the pooler prevents exhaustion.
 """
+import logging
 from functools import lru_cache
+from typing import Optional
+
+import asyncpg
 from supabase import create_client, Client
 
+logger = logging.getLogger(__name__)
+
+# ─── Supabase REST client (CRUD operations) ──────────────────────────────────
 
 @lru_cache(maxsize=1)
 def get_client() -> Client:
@@ -19,6 +29,42 @@ def get_client() -> Client:
     s = get_settings()
     return create_client(s.supabase_url, s.supabase_service_key)
 
+
+# ─── asyncpg connection pool (pgvector operations) ───────────────────────────
+
+_pool: Optional[asyncpg.Pool] = None
+
+
+async def init_pool() -> None:
+    """Create the asyncpg connection pool. Called once at application startup."""
+    global _pool
+    if _pool is not None:
+        return
+
+    from config import get_settings
+    settings = get_settings()
+
+    logger.info("Creating asyncpg connection pool → %s", settings.supabase_direct_url[:40] + "...")
+    _pool = await asyncpg.create_pool(
+        dsn=settings.supabase_direct_url,
+        ssl="require",
+        min_size=1,
+        max_size=5,
+        command_timeout=30,
+    )
+    logger.info("asyncpg pool created (min=1, max=5)")
+
+
+async def close_pool() -> None:
+    """Close the asyncpg connection pool. Called at application shutdown."""
+    global _pool
+    if _pool:
+        await _pool.close()
+        _pool = None
+        logger.info("asyncpg pool closed")
+
+
+# ─── Chunk operations ────────────────────────────────────────────────────────
 
 def insert_chunks(chunks: list) -> None:
     """Bulk-insert Chunk objects (with embeddings) into the chunks table."""
@@ -41,22 +87,24 @@ def insert_chunks(chunks: list) -> None:
     batch_size = 500
     for i in range(0, len(rows), batch_size):
         client.table("chunks").upsert(rows[i : i + batch_size]).execute()
+    logger.info("Inserted %d chunks into DB", len(rows))
 
 
 async def cosine_search(document_id: str, query_embedding: list[float], top_k: int = 5) -> list[dict]:
     """
     Find the top-k chunks most similar to query_embedding using pgvector's <=> operator.
-    Uses asyncpg directly because the Supabase REST API doesn't expose vector operators.
+    Uses the asyncpg connection pool for efficient connection reuse.
     """
-    import asyncpg
-    from config import get_settings
+    global _pool
 
-    settings = get_settings()
+    # Fallback: create pool if not initialized (e.g. during testing)
+    if _pool is None:
+        await init_pool()
+
     # Convert list to pgvector wire format: '[0.1,0.2,...]'
     vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
-    conn = await asyncpg.connect(settings.supabase_direct_url, ssl="require")
-    try:
+    async with _pool.acquire() as conn:
         rows = await conn.fetch(
             """
             SELECT id, text, page_num, char_start, char_end,
@@ -70,7 +118,6 @@ async def cosine_search(document_id: str, query_embedding: list[float], top_k: i
             document_id,
             top_k,
         )
-    finally:
-        await conn.close()
 
+    logger.debug("cosine_search: doc=%s, top_k=%d, results=%d", document_id[:8], top_k, len(rows))
     return [dict(r) for r in rows]

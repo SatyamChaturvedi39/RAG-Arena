@@ -43,6 +43,20 @@ export const vectorQuery = (documentId, query) =>
 export const vectorlessQuery = (documentId, query) =>
   api.post('/query/vectorless', { document_id: documentId, query })
 
+export const getQueryHistory = (documentId = null, limit = 50, offset = 0) =>
+  api.get('/query/history/list', { params: { document_id: documentId, limit, offset } })
+
+// ─── Feedback / Voting ───────────────────────────────────────────────────────
+
+export const submitVote = (queryId, winner, sessionId = null) =>
+  api.post('/feedback/vote', { query_id: queryId, winner, session_id: sessionId })
+
+export const getVoteTally = (queryId) =>
+  api.get(`/feedback/tally/${queryId}`)
+
+export const getVoteStats = () =>
+  api.get('/feedback/stats')
+
 // ─── Evaluation ──────────────────────────────────────────────────────────────
 
 export const startEvalRun = (dataset, maxQuestions, sessionTag) =>
@@ -53,6 +67,9 @@ export const listEvalRuns = () =>
 
 export const getEvalRun = (runId) =>
   api.get(`/eval/runs/${runId}`)
+
+export const deleteEvalRun = (runId) =>
+  api.delete(`/eval/runs/${runId}`)
 
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
@@ -66,3 +83,4 @@ export const getMetricsHistory = (limit = 100, pipeline) =>
 
 export const checkHealth = () =>
   api.get('/health')
+

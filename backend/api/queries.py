@@ -154,6 +154,39 @@ async def query_vectorless(req: CompareRequest):
     return await run_vectorless_rag(req.document_id, req.query)
 
 
+@router.get("/history/list")
+async def query_history(
+    document_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """
+    Retrieve past queries with their pipeline results.
+    Powers the History page in the frontend.
+    """
+    client = get_client()
+    query = (
+        client.table("queries")
+        .select(
+            "id,document_id,query_text,query_type,router_recommended,router_confidence,"
+            "router_reasoning,created_at,"
+            "pipeline_results(pipeline,answer,latency_ms,llm_prompt_tokens,llm_completion_tokens,"
+            "f1_score,exact_match,navigation_path,fallback_used,top_similarity_score)",
+            count="exact",
+        )
+        .order("created_at", desc=True)
+        .range(offset, offset + limit - 1)
+    )
+    if document_id:
+        query = query.eq("document_id", document_id)
+
+    result = query.execute()
+    return {
+        "items": result.data or [],
+        "total": result.count or 0,
+    }
+
+
 @router.get("/{query_id}")
 async def get_query(query_id: str):
     client = get_client()

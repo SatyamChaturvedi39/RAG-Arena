@@ -263,6 +263,17 @@ export default function Home() {
   const queryClient = useQueryClient()
   const listRef     = useRef(null)
 
+  const [deleteError, setDeleteError] = useState(null)
+
+  // Client-side isolation: only show documents uploaded by this user in this browser
+  const [myDocIds, setMyDocIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('rag_arena_my_docs') || '[]')
+    } catch {
+      return []
+    }
+  })
+
   const { data, isLoading } = useQuery({
     queryKey: ['documents'],
     queryFn: () => listDocuments().then((r) => r.data),
@@ -271,10 +282,22 @@ export default function Home() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteDocument,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['documents'] }),
+    onSuccess: (data, deletedId) => {
+      // Remove from localStorage
+      const updatedIds = myDocIds.filter(id => id !== deletedId)
+      setMyDocIds(updatedIds)
+      localStorage.setItem('rag_arena_my_docs', JSON.stringify(updatedIds))
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+    },
+    onError: (err) => {
+      setDeleteError(err.response?.data?.detail || "Failed to delete document. Please check your network connection.")
+      setTimeout(() => setDeleteError(null), 4000)
+    }
   })
 
-  const docs = data?.items || []
+  // Filter docs to only show ones this user uploaded
+  const allDocs = data?.items || []
+  const docs = allDocs.filter(doc => myDocIds.includes(doc.id))
 
   useEffect(() => {
     if (!docs.length || !listRef.current) return
@@ -283,7 +306,11 @@ export default function Home() {
     })
   }, [docs.length])
 
-  const handleUploaded = () => {
+  const handleUploaded = (docId) => {
+    // Add to localStorage
+    const updatedIds = [...myDocIds, docId]
+    setMyDocIds(updatedIds)
+    localStorage.setItem('rag_arena_my_docs', JSON.stringify(updatedIds))
     queryClient.invalidateQueries({ queryKey: ['documents'] })
   }
 
@@ -329,6 +356,19 @@ export default function Home() {
       <div className="max-w-2xl mx-auto space-y-4">
         <UploadZone onUploaded={handleUploaded} />
 
+        <AnimatePresence>
+          {deleteError && (
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center gap-1.5 text-red-400 text-xs mt-2"
+            >
+              <AlertCircle className="w-3.5 h-3.5" /> {deleteError}
+            </motion.p>
+          )}
+        </AnimatePresence>
+
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1].map((i) => (
@@ -344,13 +384,13 @@ export default function Home() {
           >
             <p className="text-slate-600 text-sm">No documents yet.</p>
             <p className="text-slate-700 text-xs mt-1">
-              Ingestion takes 30–60 seconds — both pipelines are built simultaneously.
+              Upload a document to run evaluations. Your uploads are private to this browser session.
             </p>
           </motion.div>
         ) : (
           <div className="space-y-2" ref={listRef}>
             <p className="text-xs text-slate-500 uppercase tracking-widest font-medium px-1">
-              {docs.length} document{docs.length !== 1 ? 's' : ''}
+              Your uploaded documents
             </p>
             <AnimatePresence>
               {docs.map((doc) => (

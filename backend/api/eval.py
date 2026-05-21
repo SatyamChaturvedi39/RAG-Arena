@@ -58,6 +58,17 @@ async def get_eval_run(run_id: str):
     return {"run": run.data, "question_results": results.data or []}
 
 
+@router.delete("/runs/{run_id}")
+async def delete_eval_run(run_id: str):
+    client = get_client()
+    try:
+        client.table("queries").delete().eq("session_id", run_id).execute()
+        client.table("evaluation_runs").delete().eq("id", run_id).execute()
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to delete eval run")
+
+
 async def _run_eval(run_id: str, req: EvalRunRequest):
     """Background task: runs the eval suite and writes aggregate metrics."""
     import sys, os

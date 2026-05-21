@@ -66,8 +66,16 @@ def _classify_by_regex(query: str) -> tuple[str, int]:
         if p.search(query):
             scores["multi_hop"] += 1
 
-    best = max(scores, key=scores.get)
-    return best, scores[best]
+    # Tie-breaking priority order: multi_hop > precise_factual > fuzzy_semantic
+    best = "fuzzy_semantic"
+    best_score = -1
+    for cat in ["fuzzy_semantic", "precise_factual", "multi_hop"]:
+        if scores[cat] >= best_score:
+            best = cat
+            best_score = scores[cat]
+
+    return best, best_score
+
 
 
 async def classify_query(query: str) -> str:

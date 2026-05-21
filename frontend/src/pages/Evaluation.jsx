@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, Loader2, CheckCircle, XCircle, ChevronRight } from 'lucide-react'
+import { Play, Loader2, CheckCircle, XCircle, ChevronRight, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts'
-import { startEvalRun, listEvalRuns, getEvalRun } from '../api/client'
+import { startEvalRun, listEvalRuns, getEvalRun, deleteEvalRun } from '../api/client'
 import clsx from 'clsx'
 
 // ─── Animated count-up hook ───────────────────────────────────────────────────
@@ -57,12 +57,12 @@ function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-xl border p-3 text-xs shadow-xl"
-      style={{ background: 'rgba(15,22,35,0.97)', borderColor: 'rgba(30,45,66,0.9)' }}>
-      <p className="text-slate-400 mb-2 font-medium">{label}</p>
+      style={{ background: 'rgba(24, 24, 27, 0.97)', borderColor: 'rgba(39, 39, 42, 0.9)' }}>
+      <p className="text-zinc-400 mb-2 font-medium">{label}</p>
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ background: p.fill }} />
-          <span className="text-slate-300">{p.name}:</span>
+          <span className="text-zinc-300">{p.name}:</span>
           <span className="font-mono font-semibold" style={{ color: p.fill }}>
             {p.value.toFixed(1)}%
           </span>
@@ -134,13 +134,13 @@ function RunDetail({ runDetail }) {
       {/* Metric cards */}
       {run.status === 'completed' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MetricCard label="Vector F1"     value={run.vector_f1_mean}     color="rgba(59,130,246,"  delay={0}    />
-          <MetricCard label="Vectorless F1" value={run.vectorless_f1_mean} color="rgba(139,92,246,"  delay={0.07} />
-          <MetricCard label="Router Acc."   value={run.router_accuracy}    color="rgba(99,102,241,"  delay={0.14} />
+          <MetricCard label="Vector F1"     value={run.vector_f1_mean}     color="rgba(245, 158, 11,"  delay={0}    />
+          <MetricCard label="Vectorless F1" value={run.vectorless_f1_mean} color="rgba(16, 185, 129,"  delay={0.07} />
+          <MetricCard label="Router Acc."   value={run.router_accuracy}    color="rgba(16, 185, 129,"  delay={0.14} />
           <MetricCard label="Questions"     value={null}                   unit="" delay={0.21}
             /* override to show integer */
           >
-            <p className="text-2xl font-bold text-slate-200">{run.total_questions}</p>
+            <p className="text-2xl font-bold text-zinc-200">{run.total_questions}</p>
           </MetricCard>
         </div>
       )}
@@ -177,10 +177,10 @@ function RunDetail({ runDetail }) {
                 formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
               />
               <Bar dataKey="Vector"     radius={[4,4,0,0]} maxBarSize={40}>
-                {chartData.map((_, i) => <Cell key={i} fill="#3b82f6" />)}
+                {chartData.map((_, i) => <Cell key={i} fill="#f59e0b" />)}
               </Bar>
               <Bar dataKey="Vectorless" radius={[4,4,0,0]} maxBarSize={40}>
-                {chartData.map((_, i) => <Cell key={i} fill="#8b5cf6" />)}
+                {chartData.map((_, i) => <Cell key={i} fill="#10b981" />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -190,8 +190,8 @@ function RunDetail({ runDetail }) {
             <div className="mt-4 pt-4 border-t border-surface-600 space-y-2">
               <p className="text-xs text-slate-500 mb-3">Latency (p50 · p95)</p>
               {[
-                { label: 'Vector',     p50: run.vector_latency_p50,     p95: run.vector_latency_p95,     color: '#3b82f6', fill: 'latency-bar-fill-vector' },
-                { label: 'Vectorless', p50: run.vectorless_latency_p50, p95: run.vectorless_latency_p95, color: '#8b5cf6', fill: 'latency-bar-fill-vectorless' },
+                { label: 'Vector',     p50: run.vector_latency_p50,     p95: run.vector_latency_p95,     color: '#f59e0b', fill: 'latency-bar-fill-vector' },
+                { label: 'Vectorless', p50: run.vectorless_latency_p50, p95: run.vectorless_latency_p95, color: '#10b981', fill: 'latency-bar-fill-vectorless' },
               ].map(({ label, p50, p95, color, fill }) => {
                 const max = Math.max(run.vector_latency_p95 || 0, run.vectorless_latency_p95 || 0)
                 return (
@@ -200,7 +200,7 @@ function RunDetail({ runDetail }) {
                     <div className="flex-1 latency-bar-track">
                       <div className={fill} style={{ width: `${(p50 / max) * 100}%` }} />
                     </div>
-                    <span className="text-xs font-mono text-slate-400 w-28 text-right shrink-0">
+                    <span className="text-xs font-mono text-zinc-400 w-28 text-right shrink-0">
                       {p50}ms · {p95 ?? '—'}ms
                     </span>
                   </div>
@@ -216,9 +216,12 @@ function RunDetail({ runDetail }) {
         <div className="card flex flex-col items-center justify-center py-12 gap-4">
           <Loader2 className="w-8 h-8 text-accent-400 animate-spin" />
           <div className="text-center">
-            <p className="text-sm text-slate-300 font-medium">Evaluation running…</p>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-sm text-zinc-300 font-medium">Evaluation running…</p>
+            <p className="text-xs text-zinc-500 mt-1">
               Each question uses ~7 Groq API calls. This may take several minutes.
+            </p>
+            <p className="text-xs text-amber-500/80 mt-4 max-w-sm mx-auto">
+              <strong>Note:</strong> If this has been running for over 15 minutes, the backend task likely crashed (e.g. due to DNS/network errors, missing matching PDFs, or an API quota limit). Stalled runs will not recover.
             </p>
           </div>
         </div>
@@ -323,7 +326,7 @@ function StatusIcon({ status }) {
   return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
 }
 
-function EvalRunCard({ run, onSelect, isSelected }) {
+function EvalRunCard({ run, onSelect, onDelete, isSelected }) {
   return (
     <motion.button
       layout
@@ -332,11 +335,11 @@ function EvalRunCard({ run, onSelect, isSelected }) {
       transition={{ duration: 0.25, ease: 'easeOut' }}
       onClick={() => onSelect(run.id)}
       className={clsx(
-        'card w-full text-left transition-all hover:border-surface-500',
+        'card w-full text-left transition-all hover:border-surface-500 group relative',
         isSelected && 'border-accent-500/50 bg-accent-500/5',
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 pr-6">
         <div className="flex items-center gap-2 min-w-0">
           <StatusIcon status={run.status} />
           <span className="font-medium text-sm capitalize truncate">{run.dataset_name}</span>
@@ -348,6 +351,16 @@ function EvalRunCard({ run, onSelect, isSelected }) {
           {new Date(run.run_at).toLocaleDateString()}
         </span>
       </div>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onDelete(run.id)
+        }}
+        className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
 
       {run.status === 'completed' && (
         <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -383,17 +396,19 @@ export default function Evaluation() {
   const [dataset, setDataset] = useState('financebench')
   const [maxQ, setMaxQ] = useState(50)
 
-  const { data: runs = [], isLoading: runsLoading } = useQuery({
+  const { data: runs = [], isLoading: runsLoading, isError: runsError } = useQuery({
     queryKey: ['eval-runs'],
     queryFn: () => listEvalRuns().then((r) => r.data),
     refetchInterval: 10_000,
+    retry: 1, // fail faster for better UX on DNS errors
   })
 
-  const { data: runDetail } = useQuery({
+  const { data: runDetail, isLoading: detailLoading, isError: detailError } = useQuery({
     queryKey: ['eval-run', selectedRunId],
     queryFn: () => getEvalRun(selectedRunId).then((r) => r.data),
     enabled: !!selectedRunId,
     refetchInterval: 5_000,
+    retry: 1,
   })
 
   const startMutation = useMutation({
@@ -401,6 +416,14 @@ export default function Evaluation() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['eval-runs'] })
       setSelectedRunId(data.eval_run_id)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteEvalRun,
+    onSuccess: (_, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ['eval-runs'] })
+      if (selectedRunId === deletedId) setSelectedRunId(null)
     },
   })
 
@@ -462,13 +485,18 @@ export default function Evaluation() {
             <div className="space-y-2">
               {[0,1].map(i => <div key={i} className="skeleton h-16 rounded-2xl" />)}
             </div>
+          ) : runsError ? (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 py-6 text-center px-2">
+              <p className="text-xs text-red-400 font-medium">Failed to load</p>
+              <p className="text-xs text-red-400/70 mt-1">Check database connection</p>
+            </div>
           ) : runs.length === 0 ? (
             <div
               className="rounded-2xl border py-8 text-center"
-              style={{ borderColor: 'rgba(30,45,66,0.5)', borderStyle: 'dashed' }}
+              style={{ borderColor: 'rgba(39, 39, 42, 0.5)', borderStyle: 'dashed' }}
             >
-              <p className="text-xs text-slate-600">No runs yet.</p>
-              <p className="text-xs text-slate-700 mt-1">Start a run above.</p>
+              <p className="text-xs text-zinc-500">No runs yet.</p>
+              <p className="text-xs text-zinc-600 mt-1">Start a run above.</p>
             </div>
           ) : (
             <AnimatePresence>
@@ -477,6 +505,7 @@ export default function Evaluation() {
                   key={run.id}
                   run={run}
                   onSelect={setSelectedRunId}
+                  onDelete={(id) => deleteMutation.mutate(id)}
                   isSelected={run.id === selectedRunId}
                 />
               ))}
@@ -487,7 +516,27 @@ export default function Evaluation() {
         {/* Detail panel */}
         <div className="flex-1 min-w-0">
           <AnimatePresence mode="wait">
-            {runDetail ? (
+            {detailLoading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="h-64 flex flex-col items-center justify-center"
+              >
+                <Loader2 className="w-8 h-8 text-zinc-600 animate-spin" />
+              </motion.div>
+            ) : detailError ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="h-64 flex flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5"
+              >
+                <p className="text-sm text-red-400 font-medium">Failed to load details</p>
+                <p className="text-xs text-red-400/70 mt-1">Please check your network</p>
+              </motion.div>
+            ) : runDetail ? (
               <RunDetail key={selectedRunId} runDetail={runDetail} />
             ) : (
               <motion.div
@@ -495,10 +544,10 @@ export default function Evaluation() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="h-64 flex flex-col items-center justify-center rounded-2xl border"
-                style={{ borderColor: 'rgba(30,45,66,0.5)', borderStyle: 'dashed' }}
+                style={{ borderColor: 'rgba(39, 39, 42, 0.5)', borderStyle: 'dashed' }}
               >
-                <p className="text-sm text-slate-600">Select a run to see details</p>
-                <p className="text-xs text-slate-700 mt-1">or start a new one above</p>
+                <p className="text-sm text-zinc-500">Select a run to see details</p>
+                <p className="text-xs text-zinc-600 mt-1">or start a new one above</p>
               </motion.div>
             )}
           </AnimatePresence>

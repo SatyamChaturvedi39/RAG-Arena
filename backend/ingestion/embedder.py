@@ -33,10 +33,14 @@ _EMBED_URL = (
 
 
 def _is_retryable(exc: BaseException) -> bool:
-    """Retry on 429 (rate limit) and 5xx errors."""
+    """Retry on 429 (rate limit), 5xx errors, and any transport-level failure
+    (ConnectError, NetworkError, TimeoutException) — e.g. transient DNS blips."""
     if isinstance(exc, httpx.HTTPStatusError):
         return exc.response.status_code in (429, 500, 502, 503, 504)
-    return isinstance(exc, (httpx.TimeoutException, httpx.NetworkError))
+    # httpx.ConnectError is a TransportError but NOT always a NetworkError subclass;
+    # catch the full TransportError hierarchy to cover ConnectError, NetworkError,
+    # ReadError, WriteError, etc.
+    return isinstance(exc, (httpx.TransportError, httpx.TimeoutException))
 
 
 @retry(

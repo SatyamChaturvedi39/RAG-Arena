@@ -96,10 +96,10 @@ This file documents every significant technical choice made in RAG-Arena, with t
 
 ---
 
-## 10. Fly.io over Render for backend hosting
+## 10. Render over Fly.io for backend hosting
 
-**Decision**: FastAPI backend is deployed on Fly.io, not Render.
+**Decision**: FastAPI backend is deployed on Render, not Fly.io.
 
-**Why**: Render's free tier spins down instances after 15 minutes of inactivity, causing 30-90 second cold starts. This is catastrophic for a demo: a recruiter visiting the live URL gets a broken experience for the first ~1 minute. Fly.io's free tier (3 shared-cpu-1x VMs) does not have cold starts with `auto_stop_machines = false`. The fly.toml config keeps one machine running at all times.
+**Why**: Fly.io now requires a credit card even for its free tier. To keep the project 100% free with zero spend and no card required, we switched to Render's free tier. 
 
-**Trade-off**: Fly.io requires `flyctl` CLI and a `fly.toml` config, which is slightly more complex than Render's GitHub integration. Worth it for the cold-start elimination.
+**Trade-off**: Render's free tier spins down instances after 15 minutes of inactivity, causing 30-90 second cold starts, whereas Fly.io VMs do not spin down. We mitigated this by setting up an UptimeRobot ping monitor that sends a `GET` request to `/health` every 5 minutes, keeping the Render container warm and responsive for recruiters and portfolio visitors.

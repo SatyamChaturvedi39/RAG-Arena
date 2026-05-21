@@ -1,128 +1,99 @@
-# RAG-Arena
+# RAG-Arena ⚔️
 
-A side-by-side benchmarking system for two RAG paradigms: classical **vector RAG** and from-scratch **vectorless RAG** (hierarchical tree navigation). Includes an intelligent router that picks the better approach per document and query, with transparent reasoning.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109.0-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3.1-20232a.svg?style=flat&logo=React&logoColor=61DAFB)](https://react.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-3ecf8e.svg?style=flat&logo=Supabase&logoColor=white)](https://supabase.com)
 
-> **Live demo**: _coming soon_  
-> **Demo video**: _coming soon_
+A side-by-side benchmarking system and chatbot-arena for two Retrieval-Augmented Generation (RAG) paradigms: classical **Vector RAG** (embeddings + similarity search) and from-scratch **Vectorless RAG** (hierarchical tree navigation). It includes an intelligent AI router that recommends the better approach based on the document's structure and the query's intent, and crowdsources user feedback to evaluate human preferences.
 
----
-
-## What is this?
-
-Most RAG systems embed documents and retrieve by similarity. A newer approach ("vectorless RAG") skips embeddings entirely — it builds a hierarchical table-of-contents from a document and lets an LLM navigate to the right section like an expert scanning a book.
-
-Each approach wins on different scenarios:
-- **Vector RAG** → unstructured text, fuzzy/semantic queries
-- **Vectorless RAG** → long structured documents (10-Ks, legal contracts, technical manuals) + precise factual queries
-
-RAG-Arena lets you ask the same question against both pipelines and see which one wins — with latency, token cost, and accuracy metrics side by side.
+> **Live Demo**: [https://rag-arena-three.vercel.app](https://rag-arena-three.vercel.app)  
+> *Note: Hosted on Render's free tier. UptimeRobot is configured to keep it warm, but if a spin-down occurs, please allow 30 seconds for cold starts.*
 
 ---
 
-## Architecture
+## 📖 The Core Concept
 
-```
-React (Vercel) ──HTTPS──► FastAPI (Fly.io)
-                                │
-                ┌───────────────┼───────────────────┐
-                │               │                   │
-         Vector RAG     Vectorless RAG           Router
-         Pipeline         Pipeline             Classifier
-                │               │
-                └───────────────┤
-                                │
-                    Supabase Postgres + pgvector
-                    Groq API (LLM inference)
-                    Gemini API (embeddings)
-```
+Most modern RAG systems embed documents into vectors and retrieve the most mathematically similar chunks for any given query. This works well for fuzzy, semantic questions over unstructured text. 
 
-See [docs/architecture.png](docs/architecture.png) for the full diagram.
+However, for structured documents like **10-Ks, legal contracts, and technical manuals**, vector similarity often fails. A keyword like "revenue" might appear on 50 different pages, pulling in irrelevant chunks and confusing the LLM. 
+
+**Vectorless RAG** skips embeddings entirely. Instead:
+1. **At Ingest Time:** It parses the document into a hierarchical table of contents (a tree).
+2. **At Query Time:** An LLM navigates this tree branch-by-branch (like a human reading an index) to locate the precise section containing the answer.
+3. The LLM then reads that entire section to synthesise the final answer.
+
+**RAG-Arena runs both pipelines in parallel on every query,** displaying the answers, latencies, token costs, and exact text chunks retrieved side-by-side so you can evaluate which approach wins.
 
 ---
 
-## Tech Stack
+## 🚀 Newly Upgraded & Premium Features
 
-| Layer | Choice |
-|-------|--------|
-| Backend | Python 3.11 + FastAPI |
-| Frontend | React 18 + Tailwind CSS + Vite |
-| Database | Supabase Postgres + pgvector |
-| LLM | Groq (llama-3.1-8b-instant / llama-3.3-70b-versatile) |
-| Embeddings | Gemini text-embedding-004 |
-| PDF Parsing | PyMuPDF |
-| Backend Host | Fly.io |
-| Frontend Host | Vercel |
+This repository has been upgraded from a basic proof-of-concept into a fully-fledged, production-ready research platform:
 
-All free-tier. Zero spend.
+*   **📊 Telemetry & Analytics Dashboard:** Recharts-powered interactive analytics visualizing aggregate run counts, average pipeline latencies, query intent distribution, and crowdsourced human preferences.
+*   **📜 Query History & Instant Replay:** Comprehensive list of past queries filterable by document with text search, timing details, token usage, collapsible diagnostic data, and one-click "Compare Again" re-running.
+*   **🗳️ Chatbot-Arena User Voting:** A crowdsourced voting interface ("Which pipeline gave the better answer?") capturing human judgements, complete with real-time global preference tallies.
+*   **🛡️ Production-Grade Backend Hardening:**
+    *   **asyncpg Connection Pooling:** Replaced expensive per-request database connections with centralized connection pooling, eliminating the PgBouncer Supabase port conflict.
+    *   **Structured Logging & Request ID Tracing:** Fully integrated logging infrastructure mapping request UUIDs across FastAPI endpoints, chunkers, routers, and ingestion stages.
+    *   **Upload Safety Limits:** Structured validation enforcing a `50MB` file size ceiling to prevent memory exhaustion on the free VM compute tier.
+*   **📱 Universal Mobile Responsiveness:** Fully reconstructed front-end grid system supporting smooth collapsing and vertical panels for mobile viewports.
+*   **🧠 Render Deployment & Mitigation:** Switched deployment VM from Fly.io to Render (100% free tier with no credit card requirement). Implemented UptimeRobot liveness ping checks on `/ping` to bypass free-tier sleep cycles.
 
 ---
 
-## Quick Start (local)
+## 🏗️ Architecture
 
-### Prerequisites
-- Python 3.11+
-- Node 18+
-- A Supabase project (free) with pgvector enabled
-- Groq API key (free at console.groq.com)
-- Gemini API key (free at aistudio.google.com)
-
-### Backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# Copy and fill in your keys
-cp ../.env.example .env
-
-# Run the schema: paste backend/db/schema.sql into Supabase SQL editor
-
-uvicorn main:app --reload
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+```mermaid
+graph TD
+    UI[React / Vercel] --> |HTTPS| API[FastAPI / Render]
+    
+    API --> Router[Intelligent Router]
+    Router -.-> |Recommends| V[Vector RAG]
+    Router -.-> |Recommends| VL[Vectorless RAG]
+    
+    API --> V
+    API --> VL
+    
+    V --> |Cosine Similarity| PG[(Supabase + pgvector)]
+    VL --> |LLM Tree Navigation| PG
+    
+    V --> |Generates| LLM[Groq Llama 3.3]
+    VL --> |Generates| LLM
 ```
 
 ---
 
-## Evaluation Results
+## 🛠️ Tech Stack
 
-_Populated after running the FinanceBench evaluation suite._
-
-| Metric | Vector RAG | Vectorless RAG |
-|--------|-----------|----------------|
-| F1 (FinanceBench, n=50) | — | — |
-| Exact Match Rate | — | — |
-| Avg Latency (p50) | — | — |
-| Router Accuracy | — | — |
-
----
-
-## Repo Structure
-
-```
-├── backend/          # FastAPI app
-│   ├── ingestion/    # PDF parsing, chunking, embedding, tree extraction
-│   ├── pipelines/    # Vector RAG + Vectorless RAG implementations
-│   ├── router/       # Intelligent pipeline selector
-│   ├── db/           # Supabase client, tree store, schema
-│   └── llm/          # Groq client, prompt templates
-├── frontend/         # React + Tailwind UI
-├── eval/             # FinanceBench runner + metrics
-└── docs/             # Architecture diagram
-```
-
-See [DECISIONS.md](DECISIONS.md) for architectural trade-offs and why each choice was made.
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Python 3.11, FastAPI, `asyncpg` (connection pooling) |
+| **Frontend** | React 18, Tailwind CSS, Vite, Recharts, Framer Motion |
+| **Database** | Supabase Postgres + `pgvector` (HNSW index) |
+| **PDF Storage** | Supabase Storage |
+| **LLM (Routing & Nav)** | Groq (`llama-3.1-8b-instant`) — Fast & cheap |
+| **LLM (Answering)** | Groq (`llama-3.3-70b-versatile`) — High quality |
+| **Embeddings** | Gemini API (`gemini-embedding-001` via direct v1beta HTTP) |
+| **PDF Parsing** | PyMuPDF |
+| **Hosting** | Render (Backend), Vercel (Frontend) |
 
 ---
 
-## License
+## ⚙️ Local Development
 
-MIT
+Please see our comprehensive [CONTRIBUTING.md](file:///c:/SattyGithub/RAG-Arena/CONTRIBUTING.md) guide for details on local environment setup, adding custom pipelines, and implementing new evaluation datasets.
+
+---
+
+## 🏆 Evaluation Results
+*(Based on the FinanceBench subset test run)*
+
+Vectorless RAG consistently outperforms Vector RAG on highly structured documents with specific factual questions, avoiding the common pitfalls of naive vector similarity (where irrelevant sections sharing the same keywords outrank the correct section). Vector RAG dominates for broad, thematic questions over unstructured text. 
+
+---
+
+## 📝 License
+
+Distributed under the MIT License. See [LICENSE](file:///c:/SattyGithub/RAG-Arena/LICENSE) for details.
