@@ -157,12 +157,13 @@ async def query_vectorless(req: CompareRequest):
 @router.get("/history/list")
 async def query_history(
     document_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """
     Retrieve past queries with their pipeline results.
-    Powers the History page in the frontend.
+    Powers the History page in the frontend. Filters by session_id to maintain privacy.
     """
     client = get_client()
     query = (
@@ -170,6 +171,7 @@ async def query_history(
         .select(
             "id,document_id,query_text,query_type,router_recommended,router_confidence,"
             "router_reasoning,created_at,"
+            "documents(filename),"
             "pipeline_results(pipeline,answer,latency_ms,llm_prompt_tokens,llm_completion_tokens,"
             "f1_score,exact_match,navigation_path,fallback_used,top_similarity_score)",
             count="exact",
@@ -179,12 +181,35 @@ async def query_history(
     )
     if document_id:
         query = query.eq("document_id", document_id)
+    if session_id:
+        query = query.eq("session_id", session_id)
 
     result = query.execute()
+    items = result.data or []
+    for item in items:
+        doc = item.pop("documents", None)
+        if doc and isinstance(doc, dict):
+            item["document_filename"] = doc.get("filename")
+        else:
+            item["document_filename"] = "Unknown Document"
+
     return {
-        "items": result.data or [],
+        "items": items,
         "total": result.count or 0,
     }
+
+
+@router.delete("/{query_id}")
+async def delete_query(query_id: str):
+    """
+    Delete a query and its cascaded pipeline results/votes.
+    """
+    client = get_client()
+    try:
+        client.table("queries").delete().eq("id", query_id).execute()
+        return {"success": True, "message": "Query deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete query: {e}")
 
 
 @router.get("/{query_id}")

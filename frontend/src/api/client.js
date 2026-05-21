@@ -43,8 +43,11 @@ export const vectorQuery = (documentId, query) =>
 export const vectorlessQuery = (documentId, query) =>
   api.post('/query/vectorless', { document_id: documentId, query })
 
-export const getQueryHistory = (documentId = null, limit = 50, offset = 0) =>
-  api.get('/query/history/list', { params: { document_id: documentId, limit, offset } })
+export const getQueryHistory = (documentId = null, limit = 50, offset = 0, sessionId = null) =>
+  api.get('/query/history/list', { params: { document_id: documentId, limit, offset, session_id: sessionId } })
+
+export const deleteQuery = (queryId) =>
+  api.delete(`/query/${queryId}`)
 
 // ─── Feedback / Voting ───────────────────────────────────────────────────────
 

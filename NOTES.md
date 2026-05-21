@@ -42,3 +42,20 @@ This is the raw material for an eventual blog post / write-up.
 ---
 
 _Next session: unit tests for chunker + hierarchy_extractor, then set up Supabase project and test ingestion end-to-end with a real 10-K PDF._
+
+---
+
+## Session 3 — 2026-05-21: Production Upgrades, Feedback Loops, and Live Dashboards
+
+### What was built
+- **Connection pooling**: Switched asyncpg to a singleton connection pool wrapper in `supabase_client.py`, managed in the lifespan context hook of `main.py` to prevent TCP/port exhaustion.
+- **Request ID context tracking**: Middleware tracing injecting unique `request_id` to link backend queries to structured logging instances.
+- **Telemetry Dashboard**: Dynamic and beautiful dashboard built using Recharts in `Dashboard.jsx`, visualizing metrics from `/metrics/summary` and `/feedback/stats`.
+- **Query History Panel**: Complete searchable paginated list of past queries in `History.jsx` with instant replay action, rendering collapsible side-by-side diagnostic summaries.
+- **Crowdsourced Preference Logging**: Feedback voting endpoints and a dedicated `user_votes` schema table in Postgres for Chatbot-Arena preference capture.
+- **Methodology & About Center**: Responsive about page `About.jsx` showing details on document classifier decision matrices and custom interactive flow SVGs.
+- **Robust test suite**: Designed unit tests in `test_classifier.py` and `test_tree_builder.py` covering classification priorities and section tree generators.
+
+### Key decisions made this session
+- **Priority-based Query Tie-breaker**: Integrated a strict priority-based tie-breaker logic (`multi_hop` > `precise_factual` > `fuzzy_semantic`) for classification regex matching to guarantee complex queries are correctly routed without classification dilution.
+- **Flexible /health liveness probes**: Decoupled third-party service calls (Gemini/Groq API checks) from standard `/ping` or `/health` checks, ensuring UptimeRobot warm-ups never count against free-tier rate limits.

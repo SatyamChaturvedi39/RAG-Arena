@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getQueryHistory,
-  listDocuments
+  listDocuments,
+  deleteQuery
 } from '../api/client'
 import {
   Search,
@@ -18,8 +19,18 @@ import {
   TrendingDown,
   Clock,
   Compass,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react'
+
+const getSessionId = () => {
+  let sid = sessionStorage.getItem('rag_arena_session_id')
+  if (!sid) {
+    sid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    sessionStorage.setItem('rag_arena_session_id', sid)
+  }
+  return sid
+}
 
 export default function History() {
   const navigate = useNavigate()
@@ -41,8 +52,9 @@ export default function History() {
       const currentOffset = reset ? 0 : offset
       if (reset) setOffset(0)
 
+      const sessionId = getSessionId()
       const [historyRes, docsRes] = await Promise.all([
-        getQueryHistory(selectedDocId || null, limit, currentOffset),
+        getQueryHistory(selectedDocId || null, limit, currentOffset, sessionId),
         listDocuments()
       ])
 
@@ -73,11 +85,27 @@ export default function History() {
   const loadMore = () => {
     const nextOffset = offset + limit
     setOffset(nextOffset)
+    const sessionId = getSessionId()
     // Trigger history load for next page
-    getQueryHistory(selectedDocId || null, limit, nextOffset).then(res => {
+    getQueryHistory(selectedDocId || null, limit, nextOffset, sessionId).then(res => {
       setQueries(prev => [...prev, ...(res.data.items || [])])
       setTotal(res.data.total || 0)
     }).catch(err => console.error(err))
+  }
+
+  const handleDelete = async (queryId, e) => {
+    e.stopPropagation()
+    if (!window.confirm('Are you sure you want to delete this query from your history?')) {
+      return
+    }
+    try {
+      await deleteQuery(queryId)
+      setQueries(prev => prev.filter(q => q.id !== queryId))
+      setTotal(prev => Math.max(0, prev - 1))
+    } catch (err) {
+      console.error('Error deleting query:', err)
+      alert('Failed to delete query. Please try again.')
+    }
   }
 
   const toggleExpand = (id) => {
@@ -186,8 +214,11 @@ export default function History() {
                       <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
                         <Calendar className="w-3 h-3" /> {formatDate(q.created_at)}
                       </span>
-                      <span className="flex items-center gap-1 text-[10px] text-indigo-400/80 font-semibold bg-indigo-500/5 px-2 py-0.5 rounded-full border border-indigo-500/10 max-w-[200px] truncate">
-                        <FileText className="w-3 h-3" /> {getDocName(q.document_id)}
+                      <span 
+                        className="flex items-center gap-1 text-[10px] text-indigo-400/80 font-semibold bg-indigo-500/5 px-2 py-0.5 rounded-full border border-indigo-500/10 max-w-[200px] truncate"
+                        title={q.document_filename || getDocName(q.document_id)}
+                      >
+                        <FileText className="w-3 h-3" /> {q.document_filename || getDocName(q.document_id)}
                       </span>
                       {q.query_type && (
                         <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
@@ -200,15 +231,23 @@ export default function History() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 self-center">
+                  <div className="flex items-center gap-2 shrink-0 self-center">
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         handleReRun(q.document_id, q.query_text)
                       }}
                       className="btn-secondary py-1 px-2.5 text-xs flex items-center gap-1 border-indigo-500/20 hover:border-indigo-500/40 text-indigo-400 bg-indigo-500/5"
+                      title="Run comparison again"
                     >
                       Compare <ArrowRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(q.id, e)}
+                      className="btn-secondary p-1.5 text-xs flex items-center justify-center border-red-500/20 hover:border-red-500/40 hover:text-red-400 hover:bg-red-500/10 text-zinc-500 bg-zinc-900 transition-all duration-200 rounded-lg"
+                      title="Delete query history entry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     {isExpanded ? <ChevronUp className="w-5 h-5 text-zinc-500" /> : <ChevronDown className="w-5 h-5 text-zinc-500" />}
                   </div>
