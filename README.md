@@ -47,10 +47,8 @@ See [docs/architecture.png](docs/architecture.png) for the full diagram.
 | LLM | Groq (llama-3.1-8b-instant / llama-3.3-70b-versatile) |
 | Embeddings | Gemini text-embedding-004 |
 | PDF Parsing | PyMuPDF |
-| Backend Host | Fly.io |
+| Backend Host | Render |
 | Frontend Host | Vercel |
-
-All free-tier. Zero spend.
 
 ---
 
