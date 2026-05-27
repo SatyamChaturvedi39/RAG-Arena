@@ -2,9 +2,6 @@
 
 A side-by-side benchmarking system for two RAG paradigms: classical **vector RAG** and from-scratch **vectorless RAG** (hierarchical tree navigation). Includes an intelligent router that picks the better approach per document and query, with transparent reasoning.
 
-> **Live demo**: _coming soon_  
-> **Demo video**: _coming soon_
-
 ---
 
 ## What is this?
