@@ -10,6 +10,7 @@ A side-by-side benchmarking system and chatbot-arena for two Retrieval-Augmented
 > **Live Demo**: [https://rag-arena-three.vercel.app](https://rag-arena-three.vercel.app)  
 > *Note: Hosted on Render's free tier. UptimeRobot is configured to keep it warm, but if a spin-down occurs, please allow 30 seconds for cold starts.*
 
+
 ---
 
 ## 📖 The Core Concept
@@ -45,6 +46,19 @@ This repository has been upgraded from a basic proof-of-concept into a fully-fle
 
 ## 🏗️ Architecture
 
+| Layer | Choice |
+|-------|--------|
+| Backend | Python 3.11 + FastAPI |
+| Frontend | React 18 + Tailwind CSS + Vite |
+| Database | Supabase Postgres + pgvector |
+| LLM | Groq (llama-3.1-8b-instant / llama-3.3-70b-versatile) |
+| Embeddings | Gemini gemini-embedding-001 |
+| PDF Parsing | PyMuPDF |
+| Backend Host | Render |
+| Frontend Host | Vercel |
+
+---
+
 ```mermaid
 graph TD
     UI[React / Vercel] --> |HTTPS| API[FastAPI / Render]
@@ -61,6 +75,44 @@ graph TD
     
     V --> |Generates| LLM[Groq Llama 3.3]
     VL --> |Generates| LLM
+```
+
+---
+
+## Quick Start (local)
+
+### Prerequisites
+- Python 3.11+
+- Node 18+
+- A Supabase project (free) with pgvector enabled
+- Groq API key (free at console.groq.com)
+- Gemini API key (free at aistudio.google.com)
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Copy and fill in your keys
+cp ../.env.example .env
+
+# Run the schema: paste backend/db/schema.sql into Supabase SQL editor
+
+uvicorn main:app --reload
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+
 ```
 
 ---
