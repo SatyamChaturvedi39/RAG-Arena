@@ -206,34 +206,35 @@ async def _fallback_retrieve(document_id: str, query: str) -> list[dict]:
         .select("id,title,text,page_start,page_end")
         .eq("document_id", document_id)
         .eq("is_leaf", True)
-        .limit(50)   # cap to avoid burning Groq TPM
+        .limit(20)   # cap to 20 to avoid burning Groq TPM/RPM under concurrent evals
         .execute()
     ).data or []
 
     if not leaves:
         return []
 
-    relevant: list[dict] = []
-    tasks = []
+    sem = asyncio.Semaphore(3)
 
     async def check_one(leaf: dict) -> Optional[dict]:
         if not leaf.get("text"):
             return None
         preview = leaf["text"][:300]
         prompt = WINDOW_RELEVANCE_CHECK.format(query=query, passage=preview)
-        try:
-            result, pt, ct = await groq_client.chat_json(
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=16,
-            )
-            if result.get("relevant"):
-                leaf["_pt"] = pt
-                leaf["_ct"] = ct
-                return leaf
-        except Exception:
-            pass
+        async with sem:
+            try:
+                result, pt, ct = await groq_client.chat_json(
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=16,
+                )
+                if result.get("relevant"):
+                    leaf["_pt"] = pt
+                    leaf["_ct"] = ct
+                    return leaf
+            except Exception:
+                pass
         return None
 
     results = await asyncio.gather(*[check_one(leaf) for leaf in leaves])
     relevant = [r for r in results if r is not None][:3]
     return relevant
+

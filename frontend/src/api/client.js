@@ -61,25 +61,6 @@ export const getVoteTally = (queryId) =>
 export const getVoteStats = () =>
   api.get('/feedback/stats')
 
-// ─── Evaluation ──────────────────────────────────────────────────────────────
-
-export const startEvalRun = (dataset, maxQuestions, sessionTag, customQuestions = null) =>
-  api.post('/eval/run', {
-    dataset,
-    max_questions: maxQuestions,
-    session_tag: sessionTag,
-    custom_questions: customQuestions,
-  })
-
-export const listEvalRuns = () =>
-  api.get('/eval/runs')
-
-export const getEvalRun = (runId) =>
-  api.get(`/eval/runs/${runId}`)
-
-export const deleteEvalRun = (runId) =>
-  api.delete(`/eval/runs/${runId}`)
-
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
 export const getMetricsSummary = (days = 7) =>

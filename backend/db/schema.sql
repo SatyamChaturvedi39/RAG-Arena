@@ -154,12 +154,17 @@ CREATE TABLE IF NOT EXISTS queries (
     -- User can override the router recommendation in the UI
     user_override       TEXT CHECK (user_override IN ('vector', 'vectorless', 'none')) DEFAULT 'none',
 
+    -- Deterministic Dual-Axis Router result (stored for research comparison)
+    dual_axis_result    JSONB DEFAULT NULL,  -- full DualAxisResult dict
+
     session_id      TEXT,              -- client-side UUID grouping a user session
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_queries_document ON queries(document_id);
 CREATE INDEX IF NOT EXISTS idx_queries_created  ON queries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_queries_dual_axis_decision
+    ON queries ((dual_axis_result->>'route'));
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- pipeline_results

@@ -1,6 +1,8 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
+_ROOT_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     # Supabase
@@ -45,7 +47,12 @@ class Settings(BaseSettings):
     embed_batch_size: int = 100
 
     model_config = SettingsConfigDict(
-        env_file="../.env",
+        env_file=(
+            str(_ROOT_DIR / ".env"),
+            str(_ROOT_DIR / "backend" / ".env"),
+            ".env",
+            "../.env",
+        ),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

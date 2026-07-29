@@ -59,5 +59,17 @@ NOTES.md
 # Private internals reference — never push to GitHub
 INTERNALS.md
 
-*md
+backend/.env
+*.md.bak
 !README.md
+
+# Eval run artifacts — timestamped per-run JSON files (large, reproducible via eval/run_all.py)
+# combined_results.csv is intentionally NOT ignored — it is the canonical result summary
+eval/results/*_*.json
+
+# BioASQ raw dataset (large, requires manual registration at bioasq.org)
+eval/data/bioasq.json
+
+# Generated figure PNGs (reproducible via eval/generate_figures.ipynb)
+eval/figures/*.png
+eval/figures/*.pdf

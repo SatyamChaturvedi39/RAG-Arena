@@ -1,0 +1,16 @@
+dataset,baseline,n_samples,exact_match,token_f1,rouge_l,eo_percent,avg_latency_ms,parametric_count,vector_count,vectorless_count
+nq,standard_rag,100,35.00,54.20,53.33,100.00,211.15,0,100,0
+nq,embedding_free,100,35.00,54.45,53.58,0.00,205.91,0,0,100
+nq,dual_axis,100,36.00,55.47,54.60,20.00,201.92,74,20,6
+triviaqa,standard_rag,100,73.00,82.67,82.45,100.00,251.03,0,100,0
+triviaqa,embedding_free,100,73.00,82.70,82.48,0.00,180.97,0,0,100
+triviaqa,dual_axis,100,73.00,82.67,82.45,4.00,222.03,47,4,49
+squad,standard_rag,100,8.00,11.78,11.54,100.00,246.75,0,100,0
+squad,embedding_free,100,8.00,12.01,11.79,0.00,231.89,0,0,100
+squad,dual_axis,100,8.00,11.78,11.54,8.00,488.57,34,8,58
+asqa,standard_rag,100,0.00,11.44,9.99,100.00,346.40,0,100,0
+asqa,embedding_free,100,0.00,11.90,10.38,0.00,295.37,0,0,100
+asqa,dual_axis,100,0.00,11.31,9.95,21.00,209.41,71,21,8
+bioasq,standard_rag,100,33.00,49.64,49.54,100.00,283.32,0,100,0
+bioasq,embedding_free,100,33.00,49.96,49.83,0.00,303.83,0,0,100
+bioasq,dual_axis,100,33.00,48.59,48.47,14.00,289.90,13,14,73

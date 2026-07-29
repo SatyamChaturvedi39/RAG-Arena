@@ -15,8 +15,8 @@ import clsx from 'clsx'
 
 function StrategyCard({ type, delay = 0 }) {
   const isVector    = type === 'vector'
-  const accent      = isVector ? 'rgba(59,130,246,' : 'rgba(139,92,246,'
-  const textColor   = isVector ? '#60a5fa' : '#a78bfa'
+  const accent      = isVector ? 'rgba(99,102,241,' : 'rgba(20,184,166,'
+  const textColor   = isVector ? '#818cf8' : '#2dd4bf'
 
   const cfg = isVector ? {
     label:       'Vector RAG',
@@ -334,31 +334,57 @@ export default function Home() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="text-center space-y-3 pt-2"
       >
-        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
-          Two retrieval strategies.{' '}
-          <span className="text-gradient">One question.</span>
-          <br className="hidden sm:block" /> Who wins?
+        <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-primary)] leading-tight">
+          RAG-Arena: Benchmarking Vector vs. Vectorless Retrieval
         </h1>
-        <p className="text-slate-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
-          Upload a PDF and ask anything. RAG Arena runs both pipelines in parallel
-          and shows you the answers, latency, and confidence — side by side.
+        <p className="text-[var(--color-muted)] text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+          A research platform for empirical evaluation of two fundamentally different RAG paradigms. Upload any PDF, submit a query, and measure which retrieval strategy the Deterministic Dual-Axis Router recommends — and whether human judges agree.
         </p>
       </motion.section>
 
-      {/* ── Strategy cards ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-        <StrategyCard type="vector"     delay={0.1} />
-        <StrategyCard type="vectorless" delay={0.2} />
+      {/* ── DDAR Pipeline Flow ────────────────────────────────────────────────── */}
+      <div className="max-w-4xl mx-auto card p-6 bg-white border border-[var(--color-border)] rounded-xl">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-[var(--color-primary)]">1. Query Analysis</h4>
+            <p className="text-xs text-[var(--color-muted)] mt-1 font-mono">S(q) computed</p>
+            <p className="text-xs text-[var(--color-muted)] font-mono">D(q) computed</p>
+          </div>
+          
+          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          
+          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-[var(--color-primary)]">2. DDAR Routes</h4>
+            <p className="text-xs text-[var(--color-muted)] mt-1">Parametric /</p>
+            <p className="text-xs text-[var(--color-muted)]">Vector / Vectorless</p>
+          </div>
+          
+          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          
+          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-[var(--color-primary)]">3. Both Pipelines Run</h4>
+            <p className="text-xs text-[var(--color-muted)] mt-1">Vector + Vectorless</p>
+            <p className="text-xs text-[var(--color-muted)]">answers generated</p>
+          </div>
+          
+          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          
+          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-[var(--color-primary)]">4. You Judge</h4>
+            <p className="text-xs text-[var(--color-muted)] mt-1">Vote on which</p>
+            <p className="text-xs text-[var(--color-muted)] font-normal">answer wins</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Divider ──────────────────────────────────────────────────────────── */}
       <div className="max-w-2xl mx-auto">
         <div
-          className="flex items-center gap-3 text-xs text-slate-600 uppercase tracking-widest font-medium"
+          className="flex items-center gap-3 text-xs text-[var(--color-muted)] uppercase tracking-widest font-semibold"
         >
-          <div className="flex-1 h-px" style={{ background: 'rgba(30,45,66,0.7)' }} />
+          <div className="flex-1 h-px bg-[var(--color-border)]" />
           upload a document to start
-          <div className="flex-1 h-px" style={{ background: 'rgba(30,45,66,0.7)' }} />
+          <div className="flex-1 h-px bg-[var(--color-border)]" />
         </div>
       </div>
 

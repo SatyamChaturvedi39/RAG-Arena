@@ -66,27 +66,48 @@ async def close_pool() -> None:
 
 # ─── Chunk operations ────────────────────────────────────────────────────────
 
-def insert_chunks(chunks: list) -> None:
-    """Bulk-insert Chunk objects (with embeddings) into the chunks table."""
-    client = get_client()
-    rows = [
-        {
-            "id": str(c.id),
-            "document_id": c.document_id,
-            "chunk_index": c.chunk_index,
-            "text": c.text,
-            "page_num": c.page_num,
-            "char_start": c.char_start,
-            "char_end": c.char_end,
-            "token_count": c.token_count,
-            "embedding": c.embedding,   # list[float], supabase-py serialises to JSON array
-        }
-        for c in chunks
-    ]
-    # Supabase upserts in batches of 500 to stay under payload limits
-    batch_size = 500
-    for i in range(0, len(rows), batch_size):
-        client.table("chunks").upsert(rows[i : i + batch_size]).execute()
+async def insert_chunks(chunks: list) -> None:
+    """Bulk-insert Chunk objects (with embeddings) into the chunks table using pooled asyncpg."""
+    global _pool
+    if _pool is None:
+        await init_pool()
+
+    rows = []
+    for c in chunks:
+        # Convert embedding float list to pgvector string format: '[0.1, 0.2, ...]'
+        if hasattr(c, "embedding") and c.embedding:
+            vec_str = "[" + ",".join(str(v) for v in c.embedding) + "]"
+        else:
+            vec_str = None
+
+        rows.append((
+            str(c.id),
+            str(c.document_id),
+            c.chunk_index,
+            c.text,
+            c.page_num,
+            c.char_start,
+            c.char_end,
+            c.token_count,
+            vec_str,
+        ))
+
+    async with _pool.acquire() as conn:
+        await conn.executemany(
+            """
+            INSERT INTO chunks (id, document_id, chunk_index, text, page_num, char_start, char_end, token_count, embedding)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::vector)
+            ON CONFLICT (document_id, chunk_index)
+            DO UPDATE SET
+                text = EXCLUDED.text,
+                page_num = EXCLUDED.page_num,
+                char_start = EXCLUDED.char_start,
+                char_end = EXCLUDED.char_end,
+                token_count = EXCLUDED.token_count,
+                embedding = EXCLUDED.embedding;
+            """,
+            rows
+        )
     logger.info("Inserted %d chunks into DB", len(rows))
 
 

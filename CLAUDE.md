@@ -101,6 +101,9 @@ outputDimensionality=768 keeps the vector(768) schema column unchanged.
 | 'Tenant or user not found' | asyncpg can't use Supabase PgBouncer (port 6543) | config.py `supabase_direct_url` property → db.PROJECT.supabase.co:5432 |
 | NoneType has no .strip() | n.get('summary', '') returns None when key exists as None | Change to `(n.get('summary') or '').strip()` |
 | tree-building unpacking | build_tree() returns (nodes, 0.0) tuple; score was being ignored | `tree_nodes, _ = build_tree(hierarchy, doc_id)` |
+| 'No module named eval.metrics' | Lack of `__init__.py` inside eval folder caused import failure | Created `eval/__init__.py` to establish standard Python package |
+| 'Cannot find module db.supabase_client' | Submodule imports lacked the parent `backend.` package prefix | Prefixed backend modules with `backend.` inside the runner scripts |
+| Endless Evaluation Loading | Unhandled exceptions inside background runner bypassed error handling | Placed imports/db clients in `try` blocks and wrote failure logs to DB |
 
 ---
 
@@ -147,7 +150,6 @@ frontend/
   src/App.jsx                 Router + header + nav
   src/pages/Home.jsx          PDF upload + document list with live status polling
   src/pages/Compare.jsx       Side-by-side RAG comparison UI
-  src/pages/Evaluation.jsx    Eval run launcher + results table
   src/components/ServerStatus.jsx  Pulsing health dot in header
   src/index.css               Glass morphism + glow utility classes
   tailwind.config.js          Custom colors: surface/accent/vector/vectorless

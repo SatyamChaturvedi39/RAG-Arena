@@ -58,7 +58,7 @@ export default function History() {
         listDocuments({ session_id: sessionId })
       ])
 
-      setDocuments(docsRes.data.documents || [])
+      setDocuments(docsRes.data.items || [])
       setTotal(historyRes.data.total || 0)
       
       if (reset) {
@@ -137,23 +137,23 @@ export default function History() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto text-[var(--color-text)]">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Layers className="w-8 h-8 text-indigo-400" />
-          Query <span className="text-gradient">History</span>
+        <h1 className="text-3xl font-bold flex items-center gap-2 text-[var(--color-primary)]">
+          <Layers className="w-8 h-8 text-[var(--color-accent)]" />
+          Query History
         </h1>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[var(--color-muted)]">
           Browse, replay, and compare past queries executed across uploaded documents.
         </p>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="card p-4 flex flex-col md:flex-row gap-4 items-center">
+      <div className="card p-4 flex flex-col md:flex-row gap-4 items-center bg-white border border-[var(--color-border)] rounded-xl">
         {/* Search */}
         <div className="relative w-full md:flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search queries..."
@@ -165,7 +165,7 @@ export default function History() {
 
         {/* Document Selector */}
         <div className="relative w-full md:w-64">
-          <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
             value={selectedDocId}
             onChange={(e) => setSelectedDocId(e.target.value)}
@@ -178,7 +178,7 @@ export default function History() {
               </option>
             ))}
           </select>
-          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+          <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
 
         {/* Reload */}
@@ -202,31 +202,60 @@ export default function History() {
             return (
               <div
                 key={q.id}
-                className="card p-0 overflow-hidden border-zinc-800/80 hover:border-zinc-700/80 transition-all duration-200"
+                className="card p-0 overflow-hidden border border-[var(--color-border)] hover:border-[var(--color-accent)] bg-white transition-all duration-200"
               >
                 {/* Header Summary (Clickable) */}
                 <div
                   onClick={() => toggleExpand(q.id)}
                   className="p-5 flex items-start justify-between gap-4 cursor-pointer select-none"
                 >
-                  <div className="space-y-1 md:flex-1">
+                  <div className="space-y-1.5 md:flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                      <span className="flex items-center gap-1 text-[10px] text-[var(--color-muted)] font-mono">
                         <Calendar className="w-3 h-3" /> {formatDate(q.created_at)}
                       </span>
                       <span 
-                        className="flex items-center gap-1 text-[10px] text-indigo-400/80 font-semibold bg-indigo-500/5 px-2 py-0.5 rounded-full border border-indigo-500/10 max-w-[200px] truncate"
+                        className="flex items-center gap-1 text-[10px] text-[var(--color-accent)] font-semibold bg-slate-50 px-2 py-0.5 rounded-full border border-[var(--color-border)] max-w-[200px] truncate"
                         title={q.document_filename || getDocName(q.document_id)}
                       >
                         <FileText className="w-3 h-3" /> {q.document_filename || getDocName(q.document_id)}
                       </span>
                       {q.query_type && (
-                        <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-mono text-[var(--color-muted)] bg-slate-50 border border-[var(--color-border)] px-1.5 py-0.5 rounded">
                           {q.query_type.replace('_', ' ')}
                         </span>
                       )}
+                      {q.dual_axis_result && q.dual_axis_result.route ? (
+                        <>
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              q.dual_axis_result.route === 'parametric'
+                                ? "bg-amber-500/10 border-amber-500/30 text-[#E6A817]"
+                                : q.dual_axis_result.route === 'vector'
+                                ? "bg-indigo-500/10 border-indigo-500/30 text-[#1A6B8A]"
+                                : "bg-teal-500/10 border-teal-500/30 text-[#2D6A4F]"
+                            }`}
+                          >
+                            {q.dual_axis_result.route === 'parametric'
+                              ? 'Parametric'
+                              : q.dual_axis_result.route === 'vector'
+                              ? 'Vector'
+                              : 'Vectorless'}
+                          </span>
+                          {q.dual_axis_result.s_q != null && (
+                            <span className="text-[10px] font-mono text-[var(--color-muted)] self-center ml-0.5">
+                              S={q.dual_axis_result.s_q.toFixed(1)}
+                              {q.dual_axis_result.d_q != null ? ` D=${q.dual_axis_result.d_q.toFixed(2)}` : ''}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-zinc-500/10 border-zinc-500/30 text-zinc-400">
+                          Pre-DDAR
+                        </span>
+                      )}
                     </div>
-                    <p className="text-zinc-100 font-medium text-sm md:text-base pr-4">
+                    <p className="text-[var(--color-text)] font-semibold text-sm md:text-base pr-4">
                       {q.query_text}
                     </p>
                   </div>
@@ -244,12 +273,12 @@ export default function History() {
                     </button>
                     <button
                       onClick={(e) => handleDelete(q.id, e)}
-                      className="btn-secondary p-1.5 text-xs flex items-center justify-center border-red-500/20 hover:border-red-500/40 hover:text-red-400 hover:bg-red-500/10 text-zinc-500 bg-zinc-900 transition-all duration-200 rounded-lg"
+                      className="btn-secondary p-1.5 text-xs flex items-center justify-center border-red-200 hover:border-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg text-slate-500 bg-white"
                       title="Delete query history entry"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                    {isExpanded ? <ChevronUp className="w-5 h-5 text-zinc-500" /> : <ChevronDown className="w-5 h-5 text-zinc-500" />}
+                    {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
                   </div>
                 </div>
 
@@ -260,20 +289,20 @@ export default function History() {
                       initial={{ height: 0 }}
                       animate={{ height: 'auto' }}
                       exit={{ height: 0 }}
-                      className="border-t border-zinc-800/80 bg-zinc-950/40 overflow-hidden"
+                      className="border-t border-slate-200 bg-slate-50/50 overflow-hidden"
                     >
                       <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Vector RAG answer panel */}
                         <div className="space-y-4">
-                          <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                             <span className="badge-vector">Vector RAG</span>
                             <div className="flex gap-2">
                               {vectorRes && (
                                 <>
-                                  <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                                     <Clock className="w-3 h-3" /> {vectorRes.latency_ms}ms
                                   </span>
-                                  <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                                     <Compass className="w-3 h-3" /> {vectorRes.llm_prompt_tokens + vectorRes.llm_completion_tokens} tokens
                                   </span>
                                 </>
@@ -282,32 +311,32 @@ export default function History() {
                           </div>
                           {vectorRes ? (
                             <div className="space-y-2">
-                              <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line bg-zinc-950/50 p-4 rounded-xl border border-zinc-900 font-sans">
+                              <p className="text-[var(--color-text)] text-sm leading-relaxed whitespace-pre-line bg-white p-4 rounded-xl border border-slate-200 font-sans">
                                 {vectorRes.answer}
                               </p>
                               {vectorRes.top_similarity_score !== null && (
-                                <div className="text-[10px] text-zinc-500 font-mono flex gap-1">
+                                <div className="text-[10px] text-slate-500 font-mono flex gap-1">
                                   <span>Top similarity:</span>
-                                  <span className="text-amber-400 font-semibold">{vectorRes.top_similarity_score?.toFixed(4) || 'N/A'}</span>
+                                  <span className="text-amber-600 font-semibold">{vectorRes.top_similarity_score?.toFixed(4) || 'N/A'}</span>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <p className="text-xs text-zinc-600 italic">No Vector pipeline results recorded for this run.</p>
+                            <p className="text-xs text-slate-400 italic">No Vector pipeline results recorded for this run.</p>
                           )}
                         </div>
 
                         {/* Vectorless RAG answer panel */}
                         <div className="space-y-4">
-                          <div className="flex justify-between items-center pb-2 border-b border-zinc-800">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                             <span className="badge-vectorless">Vectorless RAG</span>
                             <div className="flex gap-2">
                               {vectorlessRes && (
                                 <>
-                                  <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                                     <Clock className="w-3 h-3" /> {vectorlessRes.latency_ms}ms
                                   </span>
-                                  <span className="flex items-center gap-1 text-[10px] text-zinc-500 font-mono">
+                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                                     <Compass className="w-3 h-3" /> {vectorlessRes.llm_prompt_tokens + vectorlessRes.llm_completion_tokens} tokens
                                   </span>
                                 </>
@@ -316,23 +345,23 @@ export default function History() {
                           </div>
                           {vectorlessRes ? (
                             <div className="space-y-2">
-                              <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line bg-zinc-950/50 p-4 rounded-xl border border-zinc-900 font-sans">
+                              <p className="text-[var(--color-text)] text-sm leading-relaxed whitespace-pre-line bg-white p-4 rounded-xl border border-slate-200 font-sans">
                                 {vectorlessRes.answer}
                               </p>
                               {vectorlessRes.navigation_path && (
-                                <div className="text-[10px] text-zinc-500 font-mono flex flex-col gap-1 p-2 rounded bg-zinc-900/50 border border-zinc-800">
-                                  <span className="text-emerald-400 font-semibold uppercase tracking-wider text-[8px]">Navigation Path</span>
+                                <div className="text-[10px] text-slate-500 font-mono flex flex-col gap-1 p-2 rounded bg-slate-100/50 border border-slate-200">
+                                  <span className="text-emerald-700 font-semibold uppercase tracking-wider text-[8px]">Navigation Path</span>
                                   <span>{vectorlessRes.navigation_path}</span>
                                 </div>
                               )}
                               {vectorlessRes.fallback_used && (
-                                <span className="inline-block text-[9px] font-bold text-amber-500 uppercase tracking-wider bg-amber-500/10 px-1.5 py-0.5 rounded">
+                                <span className="inline-block text-[9px] font-bold text-amber-600 uppercase tracking-wider bg-amber-500/10 px-1.5 py-0.5 rounded">
                                   Fallback to Vector Used
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <p className="text-xs text-zinc-600 italic">No Vectorless pipeline results recorded for this run.</p>
+                            <p className="text-xs text-slate-400 italic">No Vectorless pipeline results recorded for this run.</p>
                           )}
                         </div>
                       </div>
@@ -343,8 +372,8 @@ export default function History() {
             )
           })
         ) : (
-          <div className="card p-12 text-center text-zinc-500 space-y-4">
-            <Layers className="w-10 h-10 text-zinc-600 mx-auto" />
+          <div className="card p-12 text-center text-slate-400 space-y-4 bg-white border border-[var(--color-border)] rounded-xl">
+            <Layers className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm">No past comparison queries match your current filter.</p>
             <button onClick={() => navigate('/compare')} className="btn-primary text-xs">
               Run New Comparison

@@ -18,19 +18,26 @@ async def metrics_summary(days: int = 7):
     # Total queries in the window
     queries_result = (
         client.table("queries")
-        .select("id,query_type,router_recommended", count="exact")
+        .select("id,query_type,router_recommended,dual_axis_result", count="exact")
         .gte("created_at", cutoff)
         .execute()
     )
     queries = queries_result.data or []
     total = queries_result.count or 0
 
-    router_counts = {"vector": 0, "vectorless": 0}
+    router_counts = {"parametric": 0, "vector": 0, "vectorless": 0}
     query_type_counts: dict[str, int] = {}
     for q in queries:
-        rec = q.get("router_recommended")
-        if rec in router_counts:
-            router_counts[rec] += 1
+        dar = q.get("dual_axis_result")
+        rec = None
+        if dar and isinstance(dar, dict):
+            rec = dar.get("route")
+        if not rec:
+            rec = q.get("router_recommended")
+        if rec:
+            rec_lower = rec.lower()
+            if rec_lower in router_counts:
+                router_counts[rec_lower] += 1
         qt = q.get("query_type") or "unknown"
         query_type_counts[qt] = query_type_counts.get(qt, 0) + 1
 

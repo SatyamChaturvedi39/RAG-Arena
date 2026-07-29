@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from config import get_settings
 from api.documents import router as documents_router
 from api.queries import router as queries_router
-from api.eval import router as eval_router
 from api.metrics import router as metrics_router
 from api.feedback import router as feedback_router
 
@@ -97,7 +96,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(documents_router, prefix="/documents", tags=["documents"])
 app.include_router(queries_router,   prefix="/query",     tags=["query"])
-app.include_router(eval_router,      prefix="/eval",      tags=["eval"])
 app.include_router(metrics_router,   prefix="/metrics",   tags=["metrics"])
 app.include_router(feedback_router,  prefix="/feedback",  tags=["feedback"])
 

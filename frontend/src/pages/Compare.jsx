@@ -7,6 +7,7 @@ import {
   Zap,
   TreePine,
   ChevronRight,
+  ChevronDown,
   Upload,
   MessageSquare,
   SplitSquareHorizontal,
@@ -15,7 +16,8 @@ import {
   Download,
   ThumbsUp,
   Award,
-  AlertCircle
+  AlertCircle,
+  Route
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { gsap } from 'gsap'
@@ -35,11 +37,11 @@ const getSessionId = () => {
 
 function PanelSkeleton({ color }) {
   const isVector = color === 'vector'
-  const accentColor = isVector ? 'rgba(245,158,11,' : 'rgba(16,185,129,'
+  const accentColor = isVector ? 'rgba(99,102,241,' : 'rgba(20,184,166,'
   return (
     <div
       className="flex-1 min-w-0 rounded-2xl border p-5 flex flex-col gap-4"
-      style={{ background: `${accentColor}0.04)`, borderColor: `${accentColor}0.20)` }}
+      style={{ background: `${accentColor}0.04)`, borderColor: `${accentColor}0.15)` }}
     >
       <div className="flex items-center justify-between">
         <div className="skeleton h-5 w-24 rounded-full" />
@@ -59,7 +61,7 @@ function PanelSkeleton({ color }) {
               key={i}
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                background: isVector ? '#f59e0b' : '#10b981',
+                background: isVector ? '#6366f1' : '#14b8a6',
                 opacity: 0.4,
                 animation: `glow-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
               }}
@@ -95,8 +97,8 @@ function LatencyBar({ vectorMs, vectorlessMs, handleExport }) {
         <div className="flex items-center gap-4">
           <span className="text-xs text-slate-400">
             {fasterIsVector
-              ? <span className="text-amber-400 font-semibold">Vector RAG</span>
-              : <span className="text-emerald-400 font-semibold">Vectorless RAG</span>
+              ? <span className="text-indigo-400 font-semibold">Vector RAG</span>
+              : <span className="text-teal-400 font-semibold">Vectorless RAG</span>
             }
             {' '}was <span className="text-green-400 font-semibold">{speedup}× faster</span>
           </span>
@@ -111,7 +113,7 @@ function LatencyBar({ vectorMs, vectorlessMs, handleExport }) {
       </div>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-amber-500 w-20 shrink-0">Vector</span>
+          <span className="text-xs text-indigo-400 w-20 shrink-0">Vector</span>
           <div className="flex-1 latency-bar-track">
             <div className="latency-bar-fill-vector" style={{ width: `${vPct}%` }} />
           </div>
@@ -119,7 +121,7 @@ function LatencyBar({ vectorMs, vectorlessMs, handleExport }) {
           {fasterIsVector && <span className="badge-winner text-xs">⚡ FASTER</span>}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-emerald-500 w-20 shrink-0">Vectorless</span>
+          <span className="text-xs text-teal-400 w-20 shrink-0">Vectorless</span>
           <div className="flex-1 latency-bar-track">
             <div className="latency-bar-fill-vectorless" style={{ width: `${vlPct}%` }} />
           </div>
@@ -136,8 +138,8 @@ function LatencyBar({ vectorMs, vectorlessMs, handleExport }) {
 function RouterBadge({ router }) {
   if (!router) return null
   const isVectorless = router.recommended === 'vectorless'
-  const accentColor = isVectorless ? 'rgba(16,185,129,' : 'rgba(245,158,11,'
-  const textColor   = isVectorless ? '#34d399' : '#fbbf24'
+  const accentColor = isVectorless ? 'rgba(20,184,166,' : 'rgba(99,102,241,'
+  const textColor   = isVectorless ? '#2dd4bf' : '#818cf8'
 
   return (
     <motion.div
@@ -157,7 +159,7 @@ function RouterBadge({ router }) {
             Router Recommendation
           </p>
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <span className={clsx('text-sm font-semibold', isVectorless ? 'text-emerald-400' : 'text-amber-500')}>
+            <span className={clsx('text-sm font-semibold', isVectorless ? 'text-teal-400' : 'text-indigo-400')}>
               {isVectorless ? 'Vectorless RAG' : 'Vector RAG'}
             </span>
             <span
@@ -174,23 +176,172 @@ function RouterBadge({ router }) {
   )
 }
 
-// ─── Answer panel ─────────────────────────────────────────────────────────────
+// ─── DDAR Router Decision Panel ───────────────────────────────────────────────
 
-function AnswerPanel({ color, result, delay = 0 }) {
+function RouterDecisionPanel({ ddar }) {
+  const [open, setOpen] = useState(true) // Open by default
+  if (!ddar) return null
+
+  const routeValue = ddar.route || 'unknown'
+  const routeConfig = {
+    parametric: { color: '#E6A817', bg: 'rgba(230,168,23,0.08)', label: 'Parametric' },
+    vector:     { color: '#1A6B8A', bg: 'rgba(26,107,138,0.08)',  label: 'Vector RAG' },
+    vectorless: { color: '#2D6A4F', bg: 'rgba(45,106,79,0.08)',  label: 'Vectorless RAG' },
+  }
+  const rc = routeConfig[routeValue] || routeConfig.vector
+
+  const s_q = ddar.s_q || 0
+  const theta_1 = ddar.theta_1 || 11.5
+  const d_q = ddar.d_q || 0
+  const theta_2 = ddar.theta_2 || 0.15
+  const sqt = ddar.sqt || false
+
+  const bar1Fill = Math.min(100, Math.max(0, (s_q / 40) * 100))
+  const bar1Marker = (theta_1 / 40) * 100
+  const bar1Active = s_q >= theta_1
+
+  const bar2Fill = Math.min(100, Math.max(0, d_q * 100))
+  const bar2Marker = theta_2 * 100
+  const bar2Active = d_q > theta_2 || sqt
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="rounded-2xl border overflow-hidden bg-white"
+      style={{ borderColor: `${rc.color}40` }}
+    >
+      {/* Header */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
+        style={{ background: rc.bg }}
+      >
+        <div className="flex items-center gap-2.5">
+          <Route className="w-5 h-5 shrink-0" style={{ color: rc.color }} />
+          <span className="text-sm font-semibold text-[var(--color-text)]">
+            <span className="font-normal text-slate-500">🔀 DDAR recommends: </span>
+            <span style={{ color: rc.color }}>{rc.label}</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--color-muted)] font-medium">Why?</span>
+          <ChevronDown
+            className="w-4 h-4 text-slate-500 transition-transform duration-200"
+            style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          />
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="p-5 space-y-6 border-t border-slate-200">
+              {/* Axis 1 Gauge */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-[var(--color-primary)]">Axis 1 — Mean Token Surprisal</span>
+                  <span className="font-mono text-slate-700">
+                    S(q) = {s_q.toFixed(2)} bits (θ₁ = {theta_1} bits)
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${bar1Active ? 'bg-[#2E86AB]/10 text-[#2E86AB]' : 'bg-slate-100 text-slate-500'}`}>
+                    {bar1Active ? '✓ RETRIEVE' : '✗ SKIP RETRIEVAL'}
+                  </span>
+                </div>
+                {/* Visual Gauge Bar */}
+                <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                  <div
+                    className="h-full transition-all duration-500"
+                    style={{
+                      width: `${bar1Fill}%`,
+                      background: bar1Active ? '#2E86AB' : '#cbd5e1'
+                    }}
+                  />
+                  {/* Threshold Marker */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                    style={{ left: `${bar1Marker}%` }}
+                    title={`Threshold θ₁ = ${theta_1}`}
+                  />
+                  <div
+                    className="absolute top-0 text-[8px] font-mono text-red-500 font-bold bg-white px-1 border border-red-200 rounded z-10 shadow-sm"
+                    style={{ left: `calc(${bar1Marker}% - 14px)`, transform: 'translateY(12%)' }}
+                  >
+                    θ₁
+                  </div>
+                </div>
+              </div>
+
+              {/* Axis 2 Gauge */}
+              {bar1Active && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--color-primary)]">Axis 2 — Entity Density</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${sqt ? 'bg-[#A23B72]/15 text-[#A23B72] font-bold' : 'bg-slate-100 text-slate-400'}`}>
+                        SQT: {sqt ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <span className="font-mono text-slate-700">
+                      D(q) = {d_q.toFixed(2)} (θ₂ = {theta_2})
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${bar2Active ? 'bg-[#2D6A4F]/10 text-[#2D6A4F]' : 'bg-[#1A6B8A]/10 text-[#1A6B8A]'}`}>
+                      {bar2Active ? '→ VECTORLESS' : '→ VECTOR'}
+                    </span>
+                  </div>
+                  {/* Visual Gauge Bar */}
+                  <div className="relative h-6 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                    <div
+                      className="h-full transition-all duration-500"
+                      style={{
+                        width: `${bar2Fill}%`,
+                        background: bar2Active ? '#A23B72' : '#cbd5e1'
+                      }}
+                    />
+                    {/* Threshold Marker */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10"
+                      style={{ left: `${bar2Marker}%` }}
+                      title={`Threshold θ₂ = ${theta_2}`}
+                    />
+                    <div
+                      className="absolute top-0 text-[8px] font-mono text-red-500 font-bold bg-white px-1 border border-red-200 rounded z-10 shadow-sm"
+                      style={{ left: `calc(${bar2Marker}% - 14px)`, transform: 'translateY(12%)' }}
+                    >
+                      θ₂
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Monospace reason box */}
+              <div className="rounded-xl px-4 py-3 bg-[#F4F7FA] border border-slate-200">
+                <p className="text-xs font-mono text-slate-700 leading-relaxed">{ddar.reason || '—'}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+function AnswerPanel({ color, result, delay = 0, ddarPick = false }) {
   const isVector   = color === 'vector'
   const label      = isVector ? 'Vector RAG' : 'Vectorless RAG'
-  const accentColor = isVector ? 'rgba(245, 158, 11,' : 'rgba(16, 185, 129,'
-  const textColor   = isVector ? '#fbbf24' : '#34d399'
+  const accentColor = isVector ? 'rgba(26, 107, 138,' : 'rgba(45, 106, 79,'
+  const textColor   = isVector ? '#1A6B8A' : '#2D6A4F'
   const chunksRef  = useRef(null)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (!result || result.error) return
-    const items = chunksRef.current?.querySelectorAll('.chunk-item')
-    if (items?.length) {
-      gsap.from(items, { opacity: 0, y: 12, stagger: 0.07, duration: 0.4, ease: 'power2.out', delay: 0.1 })
-    }
-  }, [result])
 
   const handleCopy = () => {
     if (!result || result.error) return
@@ -204,19 +355,31 @@ function AnswerPanel({ color, result, delay = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: 'easeOut' }}
-      className={clsx('flex-1 min-w-0 rounded-2xl border p-5 flex flex-col gap-4',
+      className={clsx('flex-1 min-w-0 rounded-2xl border flex flex-col relative overflow-hidden',
         result && !result.error && (isVector ? 'panel-vector loaded' : 'panel-vectorless loaded'),
         !result?.error && 'transition-all duration-300'
       )}
       style={{
-        background: `${accentColor}0.04)`,
-        borderColor: `${accentColor}0.20)`,
-        boxShadow: `0 0 40px ${accentColor}0.06), inset 0 1px 0 ${accentColor}0.07)`,
+        background: 'var(--color-surface)',
+        borderColor: ddarPick ? 'var(--color-accent)' : 'var(--color-border)',
+        boxShadow: ddarPick ? '0 10px 25px -5px rgba(26, 107, 138, 0.15)' : 'none',
+        paddingTop: ddarPick ? '2.5rem' : '1.25rem',
+        paddingLeft: '1.25rem',
+        paddingRight: '1.25rem',
+        paddingBottom: '1.25rem',
+        gap: '1rem',
       }}
     >
+      {ddarPick && (
+        <div className="absolute top-0 left-0 right-0 bg-[var(--color-accent)] text-white text-center py-1 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-1 select-none">
+          <Check className="w-3.5 h-3.5" /> DDAR Pick
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className={isVector ? 'badge-vector' : 'badge-vectorless'}>{label}</span>
+        <div className="flex items-center gap-2">
+          <span className={isVector ? 'badge-vector' : 'badge-vectorless'}>{label}</span>
+        </div>
         {result && !result.error && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -233,7 +396,7 @@ function AnswerPanel({ color, result, delay = 0 }) {
               <span>{(result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0)} tok</span>
               <div className="flex w-12 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(63,63,70,0.8)' }}>
                 <div className="bg-zinc-500" style={{ width: `${((result.llm_prompt_tokens || 0) / Math.max(1, (result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0))) * 100}%` }} />
-                <div style={{ background: isVector ? '#fbbf24' : '#34d399', width: `${((result.llm_completion_tokens || 0) / Math.max(1, (result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0))) * 100}%` }} />
+                <div style={{ background: isVector ? '#818cf8' : '#2dd4bf', width: `${((result.llm_completion_tokens || 0) / Math.max(1, (result.llm_prompt_tokens || 0) + (result.llm_completion_tokens || 0))) * 100}%` }} />
               </div>
             </div>
             <span className="text-slate-700">·</span>
@@ -390,7 +553,7 @@ export default function Compare() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Compare</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          Ask a question — both pipelines run in parallel and answer side by side.
+          The DDAR router analyses your query first, then both pipelines run so you can see which one was recommended — and whether it gave the better answer.
         </p>
       </div>
 
@@ -455,12 +618,12 @@ export default function Compare() {
             className="flex items-center gap-3 px-1"
           >
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-indigo-400" />
               <span>Vector RAG running…</span>
             </div>
             <span className="text-slate-700">·</span>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <TreePine className="w-3.5 h-3.5 text-emerald-500" />
+              <TreePine className="w-3.5 h-3.5 text-teal-400" />
               <span>Vectorless RAG navigating tree…</span>
             </div>
           </motion.div>
@@ -470,6 +633,13 @@ export default function Compare() {
       {/* Router badge */}
       <AnimatePresence>
         {result?.router && <RouterBadge router={result.router} />}
+      </AnimatePresence>
+
+      {/* DDAR Router Decision Panel */}
+      <AnimatePresence>
+        {hasResult && result?.dual_axis_result && (
+          <RouterDecisionPanel ddar={result.dual_axis_result} />
+        )}
       </AnimatePresence>
 
       {/* Latency bar */}
@@ -517,14 +687,14 @@ export default function Compare() {
                 <button
                   onClick={() => handleVote('vector')}
                   disabled={voting}
-                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-amber-500/20 hover:border-amber-500/40 hover:text-amber-400 w-full md:w-auto justify-center"
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-indigo-500/20 hover:border-indigo-500/40 hover:text-indigo-400 w-full md:w-auto justify-center"
                 >
                   Vector RAG
                 </button>
                 <button
                   onClick={() => handleVote('vectorless')}
                   disabled={voting}
-                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-emerald-500/20 hover:border-emerald-500/40 hover:text-emerald-400 w-full md:w-auto justify-center"
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 border-teal-500/20 hover:border-teal-500/40 hover:text-teal-400 w-full md:w-auto justify-center"
                 >
                   Vectorless RAG
                 </button>
@@ -557,8 +727,18 @@ export default function Compare() {
         )}
         {hasResult && !isLoading && (
           <motion.div key="results" className="flex flex-col md:flex-row gap-4">
-            <AnswerPanel color="vector"     result={result?.vector}     delay={0}    />
-            <AnswerPanel color="vectorless" result={result?.vectorless} delay={0.08} />
+            <AnswerPanel
+              color="vector"
+              result={result?.vector}
+              delay={0}
+              ddarPick={result?.dual_axis_result?.route === 'vector'}
+            />
+            <AnswerPanel
+              color="vectorless"
+              result={result?.vectorless}
+              delay={0.08}
+              ddarPick={result?.dual_axis_result?.route === 'vectorless'}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -572,8 +752,8 @@ export default function Compare() {
           className="flex flex-col sm:flex-row gap-4"
         >
           {[
-            { color: 'vector',     label: 'Vector RAG',     sub: 'Cosine similarity over chunk embeddings',  accent: 'rgba(245,158,11,' },
-            { color: 'vectorless', label: 'Vectorless RAG', sub: 'LLM-guided hierarchical tree navigation',  accent: 'rgba(16,185,129,' },
+            { color: 'vector',     label: 'Vector RAG',     sub: 'Cosine similarity over chunk embeddings',  accent: 'rgba(99,102,241,' },
+            { color: 'vectorless', label: 'Vectorless RAG', sub: 'LLM-guided hierarchical tree navigation',  accent: 'rgba(20,184,166,' },
           ].map(({ color, label, sub, accent }) => (
             <div
               key={color}
@@ -599,9 +779,9 @@ export default function Compare() {
           <p className="text-center text-sm text-slate-500 mb-10">How it works</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-0">
             {[
-              { Icon: Upload,                 step: '1', label: 'Upload a PDF',       sub: 'Both pipelines are built simultaneously during ingestion.' },
-              { Icon: MessageSquare,          step: '2', label: 'Ask a question',     sub: 'Type anything — a fact, a concept, a "compare and contrast."' },
-              { Icon: SplitSquareHorizontal,  step: '3', label: 'See who wins',       sub: 'Vector vs Vectorless, latency, confidence, and raw answers.' },
+              { Icon: Zap,                   step: '1', label: 'DDAR Analyses',     sub: 'Surprisal and entity density computed from your query text — no model call.' },
+              { Icon: Route,                 step: '2', label: 'Route Decided',     sub: 'Parametric, Vector, or Vectorless selected in under 1ms.' },
+              { Icon: SplitSquareHorizontal, step: '3', label: 'Both Pipelines Run', sub: 'Results shown side by side. You judge which answer wins.' },
             ].map(({ Icon, step, label, sub }, i) => (
               <div key={step} className="flex sm:flex-col items-center sm:items-center gap-4 sm:gap-0 flex-1 min-w-0">
                 {i > 0 && (

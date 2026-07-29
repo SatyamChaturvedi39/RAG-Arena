@@ -211,7 +211,7 @@ async def _run_ingestion(doc_id: str, pdf_bytes: bytes, doc_type_hint: Optional[
         embedded_chunks = await embed_chunks(chunks)
         _update("embedding", 60)
 
-        insert_chunks(embedded_chunks)
+        await insert_chunks(embedded_chunks)
         _update("embedding", 65)
 
         # ── 4. Extract hierarchy + build tree (vectorless RAG path) ──────────

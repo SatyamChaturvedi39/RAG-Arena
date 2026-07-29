@@ -1,698 +1,302 @@
-import { useState, useEffect, useRef } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Play, Loader2, CheckCircle, XCircle, ChevronRight, Trash2 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { gsap } from 'gsap'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend,
-} from 'recharts'
-import { startEvalRun, listEvalRuns, getEvalRun, deleteEvalRun } from '../api/client'
-import clsx from 'clsx'
+import React from 'react'
+import { motion } from 'framer-motion'
+import { FlaskConical, BookOpen, CheckCircle2 } from 'lucide-react'
 
-// ─── Animated count-up hook ───────────────────────────────────────────────────
-
-function useCountUp(target, duration = 1200) {
-  const [value, setValue] = useState(0)
-  useEffect(() => {
-    if (target == null) return
-    setValue(0)
-    const startTime = performance.now()
-    const easeOut = (t) => 1 - Math.pow(1 - t, 3)
-    const tick = (now) => {
-      const progress = Math.min((now - startTime) / duration, 1)
-      setValue(target * easeOut(progress))
-      if (progress < 1) requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  }, [target, duration])
-  return value
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+}
+const itemVariants = {
+  hidden: { y: 16, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.35, ease: 'easeOut' } },
 }
 
-// ─── Metric card ─────────────────────────────────────────────────────────────
+// ─── Shared primitives ────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, unit = '%', color, delay = 0 }) {
-  const animated = useCountUp(value != null ? value * 100 : null)
+function SectionHeading({ number, title }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: 'easeOut' }}
-      className="metric-card flex flex-col gap-1"
-      style={{
-        borderColor: color ? `${color}0.25)` : undefined,
-        boxShadow: color ? `0 0 24px ${color}0.07)` : undefined,
-      }}
-    >
-      <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">{label}</p>
-      <p className="text-2xl font-bold tabular-nums" style={{ color: color ? color.replace('rgba(', 'rgb(').replace(',', '').slice(0, -1) + ')' : '#e2e8f0' }}>
-        {value != null ? `${animated.toFixed(1)}${unit}` : '—'}
-      </p>
-    </motion.div>
-  )
-}
-
-// ─── Custom Recharts tooltip ──────────────────────────────────────────────────
-
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl border p-3 text-xs shadow-xl"
-      style={{ background: 'rgba(24, 24, 27, 0.97)', borderColor: 'rgba(39, 39, 42, 0.9)' }}>
-      <p className="text-zinc-400 mb-2 font-medium">{label}</p>
-      {payload.map((p) => (
-        <div key={p.name} className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: p.fill }} />
-          <span className="text-zinc-300">{p.name}:</span>
-          <span className="font-mono font-semibold" style={{ color: p.fill }}>
-            {p.value.toFixed(1)}%
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Run detail panel ─────────────────────────────────────────────────────────
-
-function RunDetail({ runDetail }) {
-  const run = runDetail?.run
-  const questions = runDetail?.question_results || []
-  const qRef = useRef(null)
-
-  useEffect(() => {
-    if (!questions.length) return
-    const items = qRef.current?.querySelectorAll('.q-item')
-    if (items?.length) {
-      gsap.from(items, { opacity: 0, y: 10, stagger: 0.05, duration: 0.35, ease: 'power2.out' })
-    }
-  }, [questions.length])
-
-  if (!run) return null
-
-  const chartData = run.status === 'completed' ? [
-    {
-      metric: 'F1 Score',
-      Vector:     +(( run.vector_f1_mean    || 0) * 100).toFixed(1),
-      Vectorless: +((run.vectorless_f1_mean || 0) * 100).toFixed(1),
-    },
-    {
-      metric: 'Exact Match',
-      Vector:     +((run.vector_em_rate    || 0) * 100).toFixed(1),
-      Vectorless: +((run.vectorless_em_rate || 0) * 100).toFixed(1),
-    },
-    {
-      metric: 'Router Acc.',
-      Vector:     +((run.router_accuracy || 0) * 100).toFixed(1),
-      Vectorless: +((run.router_accuracy || 0) * 100).toFixed(1),
-    },
-  ] : []
-
-  return (
-    <motion.div
-      key={run.id}
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex-1 min-w-0 space-y-5"
-    >
-      {/* Status header */}
-      <div className="flex items-center gap-3">
-        <h2 className="text-sm font-semibold text-white capitalize">{run.dataset_name}</h2>
-        <span className={clsx(
-          'text-xs px-2 py-0.5 rounded-full font-medium',
-          run.status === 'completed' && 'bg-green-500/10 text-green-400 border border-green-500/20',
-          run.status === 'running'   && 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-          run.status === 'failed'    && 'bg-red-500/10 text-red-400 border border-red-500/20',
-        )}>
-          {run.status}
-        </span>
-        <span className="text-xs text-slate-600 ml-auto">
-          {new Date(run.run_at).toLocaleString()}
-        </span>
-      </div>
-
-      {/* Metric cards */}
-      {run.status === 'completed' && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MetricCard label="Vector F1"     value={run.vector_f1_mean}     color="rgba(245, 158, 11,"  delay={0}    />
-          <MetricCard label="Vectorless F1" value={run.vectorless_f1_mean} color="rgba(16, 185, 129,"  delay={0.07} />
-          <MetricCard label="Router Acc."   value={run.router_accuracy}    color="rgba(16, 185, 129,"  delay={0.14} />
-          <MetricCard label="Questions"     value={null}                   unit="" delay={0.21}
-            /* override to show integer */
-          >
-            <p className="text-2xl font-bold text-zinc-200">{run.total_questions}</p>
-          </MetricCard>
-        </div>
-      )}
-
-      {/* Bar chart */}
-      {run.status === 'completed' && chartData.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.4 }}
-          className="card p-4"
-        >
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-medium mb-4">
-            Pipeline comparison
-          </p>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={chartData} barCategoryGap="30%" barGap={4}>
-              <XAxis
-                dataKey="metric"
-                tick={{ fill: '#64748b', fontSize: 11 }}
-                axisLine={{ stroke: 'rgba(30,45,66,0.7)' }}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fill: '#64748b', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(30,45,66,0.4)' }} />
-              <Legend
-                wrapperStyle={{ fontSize: 11, color: '#94a3b8', paddingTop: 8 }}
-                formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
-              />
-              <Bar dataKey="Vector"     radius={[4,4,0,0]} maxBarSize={40}>
-                {chartData.map((_, i) => <Cell key={i} fill="#f59e0b" />)}
-              </Bar>
-              <Bar dataKey="Vectorless" radius={[4,4,0,0]} maxBarSize={40}>
-                {chartData.map((_, i) => <Cell key={i} fill="#10b981" />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-
-          {/* Latency comparison */}
-          {run.vector_latency_p50 && run.vectorless_latency_p50 && (
-            <div className="mt-4 pt-4 border-t border-surface-600 space-y-2">
-              <p className="text-xs text-slate-500 mb-3">Latency (p50 · p95)</p>
-              {[
-                { label: 'Vector',     p50: run.vector_latency_p50,     p95: run.vector_latency_p95,     color: '#f59e0b', fill: 'latency-bar-fill-vector' },
-                { label: 'Vectorless', p50: run.vectorless_latency_p50, p95: run.vectorless_latency_p95, color: '#10b981', fill: 'latency-bar-fill-vectorless' },
-              ].map(({ label, p50, p95, color, fill }) => {
-                const max = Math.max(run.vector_latency_p95 || 0, run.vectorless_latency_p95 || 0)
-                return (
-                  <div key={label} className="flex items-center gap-3">
-                    <span className="text-xs w-20 shrink-0" style={{ color }}>{label}</span>
-                    <div className="flex-1 latency-bar-track">
-                      <div className={fill} style={{ width: `${(p50 / max) * 100}%` }} />
-                    </div>
-                    <span className="text-xs font-mono text-zinc-400 w-28 text-right shrink-0">
-                      {p50}ms · {p95 ?? '—'}ms
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </motion.div>
-      )}
-
-      {/* In-progress state */}
-      {run.status === 'running' && (
-        <div className="card flex flex-col items-center justify-center py-12 gap-4">
-          <Loader2 className="w-8 h-8 text-accent-400 animate-spin" />
-          <div className="text-center">
-            <p className="text-sm text-zinc-300 font-medium">Evaluation running…</p>
-            <p className="text-xs text-zinc-500 mt-1">
-              Each question uses ~7 Groq API calls. This may take several minutes.
-            </p>
-            <p className="text-xs text-amber-500/80 mt-4 max-w-sm mx-auto">
-              <strong>Note:</strong> If this has been running for over 15 minutes, the backend task likely crashed (e.g. due to DNS/network errors, missing matching PDFs, or an API quota limit). Stalled runs will not recover.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Failed state */}
-      {run.status === 'failed' && run.notes && (
-        <div className="card border-red-500/20">
-          <p className="text-xs text-red-400 font-medium mb-1">Run failed</p>
-          <p className="text-xs text-red-400/70 font-mono">{run.notes}</p>
-        </div>
-      )}
-
-      {/* Per-question results */}
-      {questions.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-medium mb-3">
-            Question results ({questions.length})
-          </p>
-          <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1" ref={qRef}>
-            {questions.map((qr, i) => (
-              <QuestionCard key={i} qr={qr} />
-            ))}
-          </div>
-        </div>
-      )}
-    </motion.div>
-  )
-}
-
-function QuestionCard({ qr }) {
-  const [open, setOpen] = useState(false)
-  const vr  = qr.pipeline_results?.find(p => p.pipeline === 'vector')
-  const vlr = qr.pipeline_results?.find(p => p.pipeline === 'vectorless')
-  const vF1  = vr?.f1_score
-  const vlF1 = vlr?.f1_score
-  const vWins  = vF1 != null && vlF1 != null && vF1 > vlF1
-  const vlWins = vF1 != null && vlF1 != null && vlF1 > vF1
-
-  return (
-    <div className="q-item card py-3 px-4 cursor-pointer hover:border-surface-500 transition-colors"
-      onClick={() => setOpen(o => !o)}>
-      <div className="flex items-start gap-2">
-        <ChevronRight className={clsx('w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0 transition-transform', open && 'rotate-90')} />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-slate-300 leading-relaxed">{qr.query_text}</p>
-          {!open && vF1 != null && (
-            <div className="flex gap-3 mt-1.5">
-              <span className={clsx('text-xs font-mono', vWins ? 'text-vector-400' : 'text-slate-500')}>
-                Vector: {(vF1 * 100).toFixed(1)}%
-              </span>
-              <span className={clsx('text-xs font-mono', vlWins ? 'text-vectorless-400' : 'text-slate-500')}>
-                Vectorless: {(vlF1 * 100).toFixed(1)}%
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-surface-600">
-              {[
-                { pr: vr,  label: 'Vector',     f1: vF1,  wins: vWins,  color: 'text-vector-400',     badge: 'badge-vector' },
-                { pr: vlr, label: 'Vectorless',  f1: vlF1, wins: vlWins, color: 'text-vectorless-400', badge: 'badge-vectorless' },
-              ].map(({ pr, label, f1, wins, color, badge }) => (
-                <div key={label} className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className={badge}>{label}</span>
-                    {f1 != null && (
-                      <span className={clsx('text-xs font-mono font-semibold', wins ? 'text-green-400' : 'text-slate-500')}>
-                        F1: {(f1 * 100).toFixed(1)}%{wins && ' ✓'}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">{pr?.answer || '—'}</p>
-                  {pr?.latency_ms && (
-                    <p className="text-xs font-mono text-slate-600">{pr.latency_ms}ms</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-// ─── Run card ─────────────────────────────────────────────────────────────────
-
-function StatusIcon({ status }) {
-  if (status === 'completed') return <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-  if (status === 'failed')    return <XCircle     className="w-4 h-4 text-red-400 shrink-0" />
-  return <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
-}
-
-function EvalRunCard({ run, onSelect, onDelete, isSelected }) {
-  return (
-    <motion.button
-      layout
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-      onClick={() => onSelect(run.id)}
-      className={clsx(
-        'card w-full text-left transition-all hover:border-surface-500 group relative',
-        isSelected && 'border-accent-500/50 bg-accent-500/5',
-      )}
-    >
-      <div className="flex items-center justify-between gap-2 pr-6">
-        <div className="flex items-center gap-2 min-w-0">
-          <StatusIcon status={run.status} />
-          <span className="font-medium text-sm capitalize truncate">{run.dataset_name}</span>
-          {run.total_questions && (
-            <span className="text-xs text-slate-500 shrink-0">{run.total_questions}q</span>
-          )}
-        </div>
-        <span className="text-xs text-slate-600 shrink-0">
-          {new Date(run.run_at).toLocaleDateString()}
-        </span>
-      </div>
-
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          onDelete(run.id)
-        }}
-        className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/10"
+    <div className="flex items-baseline gap-3 mb-1">
+      <span
+        className="font-mono text-xs font-bold uppercase tracking-widest"
+        style={{ color: 'var(--color-accent)' }}
       >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-
-      {run.status === 'completed' && (
-        <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-          <div className="flex justify-between">
-            <span className="text-slate-600">Vector F1</span>
-            <span className={clsx('font-mono', run.vector_f1_mean > run.vectorless_f1_mean ? 'text-vector-400 font-semibold' : 'text-slate-400')}>
-              {run.vector_f1_mean != null ? (run.vector_f1_mean * 100).toFixed(1) + '%' : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-600">V-less F1</span>
-            <span className={clsx('font-mono', run.vectorless_f1_mean > run.vector_f1_mean ? 'text-vectorless-400 font-semibold' : 'text-slate-400')}>
-              {run.vectorless_f1_mean != null ? (run.vectorless_f1_mean * 100).toFixed(1) + '%' : '—'}
-            </span>
-          </div>
-          <div className="flex justify-between col-span-2">
-            <span className="text-slate-600">Router accuracy</span>
-            <span className="font-mono text-accent-400">
-              {run.router_accuracy != null ? (run.router_accuracy * 100).toFixed(1) + '%' : '—'}
-            </span>
-          </div>
-        </div>
-      )}
-    </motion.button>
+        Table {number}
+      </span>
+      <h2 className="text-base font-bold text-[var(--color-primary)]">{title}</h2>
+    </div>
   )
 }
 
-const SAMPLE_CUSTOM_JSON = `[
+// ─── Table primitives ─────────────────────────────────────────────────────────
+
+function Th({ children, align = 'left' }) {
+  return (
+    <th
+      className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)] border-b border-[var(--color-border)]"
+      style={{ textAlign: align }}
+    >
+      {children}
+    </th>
+  )
+}
+
+function Td({ children, align = 'center', mono = false, highlight = false }) {
+  return (
+    <td
+      className={`px-4 py-2.5 text-sm border-b border-[var(--color-border)] ${mono ? 'font-mono' : ''} ${highlight ? 'font-semibold text-emerald-700' : 'text-[var(--color-text)]'}`}
+      style={{ textAlign: align }}
+    >
+      {children}
+    </td>
+  )
+}
+
+function Table({ children }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-white">
+      <table className="w-full border-collapse text-left">{children}</table>
+    </div>
+  )
+}
+
+// ─── Data (n=100 per cell, all real computed values) ─────────────────────────
+// Source: eval/results/combined_results.csv generated by eval/generate_final_report.py
+// Run date: 2026-07-25. All results use Groq llama-3.3-70b-versatile in open-domain QA mode.
+
+const ROUTING = [
+  { dataset: 'Natural Questions',  param: '74%', vector: '20%', vectorless: '6%'  },
+  { dataset: 'TriviaQA',           param: '47%', vector: '4%',  vectorless: '49%' },
+  { dataset: 'SQuAD 2.0',          param: '34%', vector: '8%',  vectorless: '58%' },
+  { dataset: 'ASQA',               param: '71%', vector: '21%', vectorless: '8%'  },
+  { dataset: 'BioASQ12b',          param: '13%', vector: '14%', vectorless: '73%' },
+]
+
+// Primary quality metrics
+// NQ/TriviaQA/SQuAD: Token F1 | ASQA: ROUGE-L | BioASQ: Token F1
+const QUALITY = [
   {
-    "question": "What is the total revenue of the company for FY2023?",
-    "answer": "$45.2 billion",
-    "doc_name": "annual_report",
-    "doc_type": "financial"
+    dataset: 'Natural Questions',
+    metric: 'Token F1',
+    vector:     '54.2%',
+    vectorless: '54.5%',
+    ddar:       '55.5%',
+    ddarBetter: true,
   },
   {
-    "question": "What are the primary risk factors mentioned?",
-    "answer": "Primary risks include supply chain disruptions, competitive pricing pressures, and regulatory changes.",
-    "doc_name": "annual_report",
-    "doc_type": "financial"
-  }
-]`
+    dataset: 'TriviaQA',
+    metric: 'Token F1',
+    vector:     '82.7%',
+    vectorless: '82.7%',
+    ddar:       '82.7%',
+    ddarBetter: false,
+  },
+  {
+    dataset: 'SQuAD 2.0',
+    metric: 'Token F1',
+    vector:     '11.8%',
+    vectorless: '12.0%',
+    ddar:       '11.8%',
+    ddarBetter: false,
+  },
+  {
+    dataset: 'ASQA',
+    metric: 'ROUGE-L',
+    vector:     '10.0%',
+    vectorless: '10.4%',
+    ddar:       '10.0%',
+    ddarBetter: false,
+  },
+  {
+    dataset: 'BioASQ12b',
+    metric: 'Token F1',
+    vector:     '49.6%',
+    vectorless: '50.0%',
+    ddar:       '48.6%',
+    ddarBetter: false,
+  },
+]
 
-// ─── Evaluation page ──────────────────────────────────────────────────────────
+// EO% = fraction of queries requiring an embedding call
+const EO = [
+  { dataset: 'Natural Questions', ddar: '20.0%', reduction: '80.0%' },
+  { dataset: 'TriviaQA',          ddar:  '4.0%', reduction: '96.0%' },
+  { dataset: 'SQuAD 2.0',         ddar:  '8.0%', reduction: '92.0%' },
+  { dataset: 'ASQA',              ddar: '21.0%', reduction: '79.0%' },
+  { dataset: 'BioASQ12b',         ddar: '14.0%', reduction: '86.0%' },
+  { dataset: 'Overall Average',   ddar: '13.4%', reduction: '86.6%' },
+]
+
+// ─── Table components ─────────────────────────────────────────────────────────
+
+function RoutingDistributionTable() {
+  return (
+    <Table>
+      <thead className="bg-slate-50">
+        <tr>
+          <Th align="left">Dataset</Th>
+          <Th align="center">Parametric %</Th>
+          <Th align="center">Vector %</Th>
+          <Th align="center">Vectorless %</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {ROUTING.map((row, i) => (
+          <tr key={row.dataset} className={i % 2 === 0 ? '' : 'bg-slate-50/60'}>
+            <Td align="left">{row.dataset}</Td>
+            <Td mono>{row.param}</Td>
+            <Td mono>{row.vector}</Td>
+            <Td mono>{row.vectorless}</Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  )
+}
+
+function AnswerQualityTable() {
+  return (
+    <Table>
+      <thead className="bg-slate-50">
+        <tr>
+          <Th align="left">Dataset</Th>
+          <Th align="left">Metric</Th>
+          <Th align="center">Always-Vector</Th>
+          <Th align="center">Always-Vectorless</Th>
+          <Th align="center">DDAR</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {QUALITY.map((row, i) => (
+          <tr key={row.dataset} className={i % 2 === 0 ? '' : 'bg-slate-50/60'}>
+            <Td align="left">{row.dataset}</Td>
+            <Td align="left" mono>{row.metric}</Td>
+            <Td mono>{row.vector}</Td>
+            <Td mono>{row.vectorless}</Td>
+            <Td mono highlight={row.ddarBetter}>{row.ddar}</Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  )
+}
+
+function EmbeddingOverheadTable() {
+  return (
+    <Table>
+      <thead className="bg-slate-50">
+        <tr>
+          <Th align="left">Dataset</Th>
+          <Th align="center">Always-Vector EO%</Th>
+          <Th align="center">DDAR EO%</Th>
+          <Th align="center">Embedding Reduction</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {EO.map((row, i) => (
+          <tr key={row.dataset} className={i % 2 === 0 ? '' : 'bg-slate-50/60'}>
+            <Td align="left">
+              {row.dataset === 'Overall Average'
+                ? <span className="font-semibold text-[var(--color-primary)]">{row.dataset}</span>
+                : row.dataset}
+            </Td>
+            <Td mono><span className="text-slate-500">100%</span></Td>
+            <Td mono highlight>{row.ddar}</Td>
+            <Td mono highlight>{row.reduction}</Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Evaluation() {
-  const queryClient = useQueryClient()
-  const [selectedRunId, setSelectedRunId] = useState(null)
-  const [dataset, setDataset] = useState('financebench')
-  const [maxQ, setMaxQ] = useState(50)
-  
-  // Custom dataset editor states
-  const [customJsonText, setCustomJsonText] = useState('')
-  const [customJsonError, setCustomJsonError] = useState(null)
-
-  const { data: runs = [], isLoading: runsLoading, isError: runsError } = useQuery({
-    queryKey: ['eval-runs'],
-    queryFn: () => listEvalRuns().then((r) => r.data),
-    refetchInterval: 10_000,
-    retry: 1, // fail faster for better UX on DNS errors
-  })
-
-  const { data: runDetail, isLoading: detailLoading, isError: detailError } = useQuery({
-    queryKey: ['eval-run', selectedRunId],
-    queryFn: () => getEvalRun(selectedRunId).then((r) => r.data),
-    enabled: !!selectedRunId,
-    refetchInterval: 5_000,
-    retry: 1,
-  })
-
-  const startMutation = useMutation({
-    mutationFn: () => {
-      let customQuestions = null
-      if (dataset === 'custom' && customJsonText.trim()) {
-        try {
-          customQuestions = JSON.parse(customJsonText)
-        } catch (e) {
-          throw new Error('Please fix the invalid JSON before starting.')
-        }
-      }
-      return startEvalRun(dataset, maxQ, null, customQuestions).then((r) => r.data)
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['eval-runs'] })
-      setSelectedRunId(data.eval_run_id)
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteEvalRun,
-    onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ['eval-runs'] })
-      if (selectedRunId === deletedId) setSelectedRunId(null)
-    },
-  })
-
-  const handleLoadSample = () => {
-    setCustomJsonText(SAMPLE_CUSTOM_JSON)
-    setCustomJsonError(null)
-  }
-
-  const handleJsonChange = (val) => {
-    setCustomJsonText(val)
-    if (!val.trim()) {
-      setCustomJsonError(null)
-      return
-    }
-    try {
-      const parsed = JSON.parse(val)
-      if (!Array.isArray(parsed)) {
-        setCustomJsonError('JSON must be a list (array) of QA objects.')
-        return
-      }
-      for (let i = 0; i < parsed.length; i++) {
-        const item = parsed[i]
-        if (!item.question || !item.answer) {
-          setCustomJsonError(`Entry #${i + 1} is missing 'question' or 'answer'.`)
-          return
-        }
-      }
-      setCustomJsonError(null)
-    } catch (err) {
-      setCustomJsonError(`Invalid JSON: ${err.message}`)
-    }
-  }
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const text = evt.target?.result
-      if (typeof text === 'string') {
-        handleJsonChange(text)
-      }
-    }
-    reader.readAsText(file)
-  }
-
-  const isStartDisabled = startMutation.isPending || (dataset === 'custom' && (!customJsonText.trim() || !!customJsonError))
-
   return (
-    <div className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-10 max-w-5xl mx-auto text-[var(--color-text)] animate-fade-in"
+    >
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-white">Evaluation</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Benchmark both pipelines on QA datasets. See which retrieval strategy wins — and when.
+      <motion.div variants={itemVariants}>
+        <h1 className="text-3xl font-bold flex items-center gap-2.5 text-[var(--color-primary)]">
+          <FlaskConical className="w-7 h-7 text-[var(--color-accent)]" />
+          Benchmark Evaluation Results
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-muted)] max-w-3xl leading-relaxed">
+          DDAR evaluated across five public QA datasets against always-vector and always-vectorless baselines.
+          Results generated by running{' '}
+          <code className="font-mono text-xs bg-slate-100 border border-[var(--color-border)] px-1 py-0.5 rounded">
+            eval/run_all.py
+          </code>{' '}
+          with BioASQ12b (5,046 questions), NQ-open (3,610), TriviaQA rc.wikipedia (11,313),
+          SQuAD 2.0 (11,873), and ASQA (948). Each cell reflects n=100 sampled queries using
+          Groq llama-3.3-70b-versatile in open-domain parametric QA mode.
         </p>
-      </div>
+        <div className="mt-3 flex flex-wrap gap-3">
+          {['Natural Questions', 'TriviaQA', 'SQuAD 2.0', 'ASQA', 'BioASQ12b'].map(ds => (
+            <span key={ds} className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
+              <CheckCircle2 className="w-3 h-3" /> {ds} ✓
+            </span>
+          ))}
+        </div>
+      </motion.div>
 
-      {/* Start run form */}
-      <div
-        className="rounded-2xl border p-5"
-        style={{ background: 'rgba(15,22,35,0.65)', borderColor: 'rgba(30,45,66,0.7)', backdropFilter: 'blur(12px)' }}
+      {/* Section 1 */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <SectionHeading number="I" title="Routing Distribution (DDAR, dual_axis baseline)" />
+        <p className="text-xs text-[var(--color-muted)] leading-relaxed max-w-2xl">
+          Fraction of 100 queries assigned to each route by the Deterministic Dual-Axis Router.
+          Parametric queries bypass retrieval entirely. BioASQ routes 73% vectorless
+          (biomedical entity-dense queries trigger low surprisal + high semantic distance).
+          NQ routes 74% parametric (common-knowledge factoids).
+        </p>
+        <RoutingDistributionTable />
+      </motion.div>
+
+      {/* Section 2 */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <SectionHeading number="II" title="Answer Quality" />
+        <p className="text-xs text-[var(--color-muted)] leading-relaxed max-w-2xl">
+          Primary quality metrics per dataset using the SQuAD token-normalisation protocol.
+          DDAR achieves +1.3 pp Token F1 on NQ over the vector baseline by routing 74% of queries
+          parametrically. On TriviaQA all three baselines converge (82.7% F1). BioASQ and ASQA
+          show comparable scores across baselines, consistent with the open-domain parametric eval mode
+          (no retrieval corpus — routing behaviour is measured, not retrieval quality).
+        </p>
+        <AnswerQualityTable />
+      </motion.div>
+
+      {/* Section 3 */}
+      <motion.div variants={itemVariants} className="space-y-3">
+        <SectionHeading number="III" title="Embedding Overhead (EO%)" />
+        <p className="text-xs text-[var(--color-muted)] leading-relaxed max-w-2xl">
+          EO% is the fraction of queries that required an embedding API call (Always-Vector = 100% by definition).
+          Across all five datasets DDAR achieves an average EO% of <strong>13.4%</strong> — an <strong>86.6%
+          reduction</strong> in embedding calls. TriviaQA reaches 96% reduction because DDAR routes 47%
+          parametrically and 49% vectorless, leaving only 4% requiring vector retrieval.
+        </p>
+        <EmbeddingOverheadTable />
+      </motion.div>
+
+      {/* Methodology note */}
+      <motion.div
+        variants={itemVariants}
+        className="rounded-xl border border-[var(--color-border)] bg-slate-50 px-5 py-4 flex gap-3"
       >
-        <div className="flex items-end gap-4 flex-wrap">
-          <div>
-            <label className="block text-xs text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Dataset</label>
-            <select
-              value={dataset}
-              onChange={(e) => setDataset(e.target.value)}
-              className="input"
-            >
-              <option value="financebench">FinanceBench</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-1.5 uppercase tracking-wider font-medium">Max questions</label>
-            <input
-              type="number" min={5} max={150} value={maxQ}
-              onChange={(e) => setMaxQ(Number(e.target.value))}
-              className="input w-24"
-            />
-          </div>
-          <button
-            onClick={() => startMutation.mutate()}
-            disabled={isStartDisabled}
-            className="btn-primary flex items-center gap-2"
-          >
-            {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            Start run
-          </button>
-          <p className="text-xs text-slate-600 max-w-xs">
-            ⚠ ~7 Groq API calls per question · 50 questions ≈ 10 min
-          </p>
-        </div>
-
-        {dataset === 'custom' && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-5 pt-5 border-t overflow-hidden"
-            style={{ borderColor: 'rgba(30,45,66,0.5)' }}
-          >
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-white mb-1">Custom Q&A Dataset</h3>
-                <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-                  Upload a JSON file or paste Q&A pairs directly below. Each item must have a <code>question</code> and an <code>answer</code>. The <code>doc_name</code> should be a substring of the uploaded PDF filename to match against.
-                </p>
-              </div>
-
-              <div className="flex gap-4 flex-wrap items-center">
-                <label className="btn-secondary text-xs flex items-center gap-2 cursor-pointer">
-                  <span>Upload JSON File</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleLoadSample}
-                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors"
-                >
-                  Load Sample Template
-                </button>
-              </div>
-
-              <div className="relative">
-                <textarea
-                  value={customJsonText}
-                  onChange={(e) => handleJsonChange(e.target.value)}
-                  placeholder={`[\n  {\n    "question": "your question here",\n    "answer": "ground truth answer here",\n    "doc_name": "filename_substring",\n    "doc_type": "financial"\n  }\n]`}
-                  className="font-mono text-xs w-full h-44 rounded-xl border p-3.5 focus:outline-none"
-                  style={{
-                    background: 'rgba(10, 15, 26, 0.8)',
-                    borderColor: 'rgba(30, 45, 66, 0.7)',
-                    color: '#e2e8f0',
-                  }}
-                />
-                
-                {/* Real-time validation badge */}
-                <div className="absolute bottom-3 right-3 text-xs">
-                  {customJsonError ? (
-                    <span className="text-red-400 bg-red-950/40 border border-red-500/20 px-2.5 py-1 rounded-md">
-                      ✗ {customJsonError}
-                    </span>
-                  ) : customJsonText.trim() ? (
-                    <span className="text-green-400 bg-green-950/40 border border-green-500/20 px-2.5 py-1 rounded-md">
-                      ✓ JSON is valid
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Main layout */}
-      <div className="flex gap-5">
-        {/* Run list */}
-        <div className="w-64 shrink-0 space-y-2">
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-medium">Past runs</p>
-          {runsLoading ? (
-            <div className="space-y-2">
-              {[0,1].map(i => <div key={i} className="skeleton h-16 rounded-2xl" />)}
-            </div>
-          ) : runsError ? (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 py-6 text-center px-2">
-              <p className="text-xs text-red-400 font-medium">Failed to load</p>
-              <p className="text-xs text-red-400/70 mt-1">Check database connection</p>
-            </div>
-          ) : runs.length === 0 ? (
-            <div
-              className="rounded-2xl border py-8 text-center"
-              style={{ borderColor: 'rgba(39, 39, 42, 0.5)', borderStyle: 'dashed' }}
-            >
-              <p className="text-xs text-zinc-500">No runs yet.</p>
-              <p className="text-xs text-zinc-600 mt-1">Start a run above.</p>
-            </div>
-          ) : (
-            <AnimatePresence>
-              {runs.map((run) => (
-                <EvalRunCard
-                  key={run.id}
-                  run={run}
-                  onSelect={setSelectedRunId}
-                  onDelete={(id) => deleteMutation.mutate(id)}
-                  isSelected={run.id === selectedRunId}
-                />
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
-
-        {/* Detail panel */}
-        <div className="flex-1 min-w-0">
-          <AnimatePresence mode="wait">
-            {detailLoading ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="h-64 flex flex-col items-center justify-center"
-              >
-                <Loader2 className="w-8 h-8 text-zinc-600 animate-spin" />
-              </motion.div>
-            ) : detailError ? (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-64 flex flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/5"
-              >
-                <p className="text-sm text-red-400 font-medium">Failed to load details</p>
-                <p className="text-xs text-red-400/70 mt-1">Please check your network</p>
-              </motion.div>
-            ) : runDetail ? (
-              <RunDetail key={selectedRunId} runDetail={runDetail} />
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-64 flex flex-col items-center justify-center rounded-2xl border"
-                style={{ borderColor: 'rgba(39, 39, 42, 0.5)', borderStyle: 'dashed' }}
-              >
-                <p className="text-sm text-zinc-500">Select a run to see details</p>
-                <p className="text-xs text-zinc-600 mt-1">or start a new one above</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
+        <BookOpen className="w-4 h-4 shrink-0 mt-0.5 text-[var(--color-accent)]" />
+        <p className="text-xs text-[var(--color-muted)] leading-relaxed">
+          Evaluation methodology follows the SQuAD token-normalisation protocol. Token F1,
+          ROUGE-L (β=1), Exact Match, and Embedding Overhead % are computed as defined in
+          Section III-D of the accompanying paper. Eval mode uses open-domain parametric
+          answering via Groq llama-3.3-70b-versatile (EVAL_TEMPERATURE=0); retrieval quality
+          is not measured since benchmark documents are not part of the eval corpus. Raw
+          per-sample data and aggregate JSON files are in{' '}
+          <code className="font-mono text-xs bg-slate-200 px-1 py-0.5 rounded">eval/results/</code>.
+        </p>
+      </motion.div>
+    </motion.div>
   )
 }

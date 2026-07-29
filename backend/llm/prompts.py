@@ -105,3 +105,13 @@ Query: {query}
 Passage: {passage}
 
 Respond with JSON only: {{"relevant": <true|false>}}"""
+
+
+# ─── Parametric answer (no retrieval) ────────────────────────────────────────
+
+PARAMETRIC_ANSWER = """\
+You are answering a question from your training knowledge only. \
+No documents have been retrieved. If you are not confident in the answer, \
+say so explicitly — do not fabricate. Answer concisely.
+
+Question: {query}"""

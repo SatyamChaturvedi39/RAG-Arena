@@ -4,28 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        surface: {
-          900: '#09090b', // zinc-950
-          800: '#18181b', // zinc-900
-          700: '#27272a', // zinc-800
-          600: '#3f3f46', // zinc-700
-          500: '#52525b', // zinc-600
-        },
-        accent: {
-          500: '#10b981', // emerald-500
-          400: '#34d399', // emerald-400
-          300: '#6ee7b7', // emerald-300
-        },
-        vector: {
-          500: '#f59e0b', // amber-500
-          400: '#fbbf24', // amber-400
-          300: '#fcd34d', // amber-300
-        },
-        vectorless: {
-          500: '#10b981', // emerald-500
-          400: '#34d399', // emerald-400
-          300: '#6ee7b7', // emerald-300
-        },
+        primary: '#0C3547',
+        accent: '#1A6B8A',
+        signal1: '#2E86AB',
+        signal2: '#A23B72',
+        parametric: '#E6A817',
+        vector: '#1A6B8A',
+        vectorless: '#2D6A4F',
+        surface: '#F7F9FB',
+        border: '#D4DCE4',
+        text: '#1C2B3A',
+        muted: '#5E7387',
+        bg: '#F0F4F7',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -132,18 +132,11 @@ npm run dev
 | **Hosting** | Render (Backend), Vercel (Frontend) |
 
 ---
-
+ 
 ## ⚙️ Local Development
-
-Please see our comprehensive [CONTRIBUTING.md](file:///c:/SattyGithub/RAG-Arena/CONTRIBUTING.md) guide for details on local environment setup, adding custom pipelines, and implementing new evaluation datasets.
-
----
-
-## 🏆 Evaluation Results
-*(Based on the FinanceBench subset test run)*
-
-Vectorless RAG consistently outperforms Vector RAG on highly structured documents with specific factual questions, avoiding the common pitfalls of naive vector similarity (where irrelevant sections sharing the same keywords outrank the correct section). Vector RAG dominates for broad, thematic questions over unstructured text. 
-
+ 
+Please see our comprehensive [CONTRIBUTING.md](file:///c:/SattyGithub/RAG-Arena/CONTRIBUTING.md) guide for details on local environment setup and adding custom pipelines.
+ 
 ---
 
 ## 📝 License

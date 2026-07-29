@@ -1,10 +1,11 @@
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from db.supabase_client import get_client
+from router import dual_axis_router
 
 router = APIRouter()
 
@@ -50,6 +51,7 @@ class CompareResponse(BaseModel):
     router: RouterOutput
     vector: PipelineResult
     vectorless: PipelineResult
+    dual_axis_result: dict
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -65,7 +67,7 @@ async def compare(req: CompareRequest):
     # Verify document is ready
     doc_result = (
         client.table("documents")
-        .select("id,status,doc_type,structure_score")
+        .select("id,status,doc_type")
         .eq("id", req.document_id)
         .single()
         .execute()
@@ -76,14 +78,20 @@ async def compare(req: CompareRequest):
     if doc["status"] != "ready":
         raise HTTPException(status_code=400, detail=f"Document is not ready (status: {doc['status']}). Wait for ingestion to complete.")
 
-    # Route
-    from router.classifier import classify_query, recommend
-    query_type = await classify_query(req.query)
-    router_output = recommend(
-        structure_score=doc.get("structure_score") or 0.0,
-        doc_type=doc.get("doc_type") or "general",
-        query_type=query_type,
-    )
+    # ── Deterministic Dual-Axis Router (DDAR) ─────────────────────────────────
+    # This is the ONLY routing function called. Its result drives both the DB
+    # record and the API response. The old classifier is NOT consulted here.
+    duar_dict = dual_axis_router.route(req.query)
+
+    # ── Query-type label (metadata only, NOT used in routing) ─────────────────
+    # classify_query is kept solely to tag the DB row with a human-readable
+    # label (precise_factual / fuzzy_semantic / multi_hop). It has zero
+    # influence on which pipeline is chosen.
+    from router.classifier import classify_query
+    try:
+        query_type = await classify_query(req.query)
+    except Exception:
+        query_type = "unknown"
 
     # Log the query
     import uuid
@@ -93,12 +101,19 @@ async def compare(req: CompareRequest):
         "document_id": req.document_id,
         "query_text": req.query,
         "query_type": query_type,
-        "router_recommended": router_output.recommended,
-        "router_confidence": router_output.confidence,
-        "router_reasoning": router_output.reasoning,
-        "router_signals": router_output.signals,
+        # router_recommended / reasoning come from DDAR, not the old classifier
+        "router_recommended": duar_dict["route"],
+        "router_confidence": 1.0,   # DDAR is deterministic — confidence is always 1
+        "router_reasoning": duar_dict["reason"],
+        "router_signals": {
+            "s_q": duar_dict["s_q"],
+            "d_q": duar_dict["d_q"],
+            "sqt": duar_dict["sqt"],
+            "axis_triggered": duar_dict["axis_triggered"],
+        },
         "user_override": req.override_pipeline or "none",
         "session_id": req.session_id,
+        "dual_axis_result": duar_dict,
     }).execute()
 
     # Run both pipelines in parallel
@@ -132,11 +147,27 @@ async def compare(req: CompareRequest):
             payload["fallback_used"] = result.fallback_used or False
         client.table("pipeline_results").insert(payload).execute()
 
+    # Build a RouterOutput-compatible dict from DDAR for the frontend
+    ddar_router_output = RouterOutput(
+        recommended=duar_dict["route"],
+        confidence=1.0,
+        reasoning=duar_dict["reason"],
+        signals={
+            "s_q": duar_dict["s_q"],
+            "d_q": duar_dict["d_q"],
+            "sqt": duar_dict["sqt"],
+            "axis_triggered": duar_dict["axis_triggered"],
+            "theta_1": duar_dict["theta_1"],
+            "theta_2": duar_dict["theta_2"],
+        },
+    )
+
     return CompareResponse(
         query_id=query_id,
-        router=RouterOutput(**router_output.__dict__),
+        router=ddar_router_output,
         vector=vector_result,
         vectorless=vectorless_result,
+        dual_axis_result=duar_dict,
     )
 
 
@@ -152,6 +183,65 @@ async def query_vectorless(req: CompareRequest):
     _check_doc_ready(req.document_id)
     from pipelines.vectorless_rag import run_vectorless_rag
     return await run_vectorless_rag(req.document_id, req.query)
+
+
+@router.get("/route-preview")
+async def route_preview(
+    q: str = Query(..., description="Query string to preview routing for — no DB write, no pipeline execution."),
+):
+    """
+    Preview the Dual-Axis Router decision for a query without running any pipeline
+    or writing to the database. Useful for testing and debugging the DDAR.
+
+    Returns:
+        {
+          "query": "...",
+          "routing_decision": { ...full router dict... },
+          "explanation": "Human-readable sentence explaining the decision"
+        }
+    """
+    decision = dual_axis_router.route(q)
+
+    # Build human-readable explanation from the routing signals
+    route_name = decision["route"]
+    s_q = decision["s_q"]
+    theta_1 = decision["theta_1"]
+    theta_2 = decision["theta_2"]
+
+    if route_name == "parametric":
+        explanation = (
+            f"Query has mean token surprisal of {s_q:.1f} bits, which is below "
+            f"the threshold of {theta_1} bits, so retrieval is skipped and the "
+            f"language model answers directly from its training knowledge."
+        )
+    elif route_name == "vectorless":
+        d_q = decision["d_q"]
+        sqt = decision["sqt"]
+        parts = []
+        if d_q is not None and d_q > theta_2:
+            parts.append(f"entity density of {d_q:.3f} (above threshold {theta_2})")
+        if sqt:
+            parts.append("a structural/catalogue lookup pattern was detected")
+        detail = " and ".join(parts) if parts else "entity-dense or structured content"
+        explanation = (
+            f"Query has mean token surprisal of {s_q:.1f} bits (above threshold "
+            f"{theta_1}), so retrieval is needed. The query has {detail}, so "
+            f"structural tree navigation (vectorless) is selected."
+        )
+    else:  # vector
+        d_q = decision["d_q"]
+        explanation = (
+            f"Query has mean token surprisal of {s_q:.1f} bits (above threshold "
+            f"{theta_1}), so retrieval is needed. Entity density is {d_q:.3f} "
+            f"(at or below threshold {theta_2}) with no structural patterns, so "
+            f"semantic embedding search (vector) is selected."
+        )
+
+    return {
+        "query": q,
+        "routing_decision": decision,
+        "explanation": explanation,
+    }
 
 
 @router.get("/history/list")
@@ -170,7 +260,7 @@ async def query_history(
         client.table("queries")
         .select(
             "id,document_id,query_text,query_type,router_recommended,router_confidence,"
-            "router_reasoning,created_at,"
+            "router_reasoning,dual_axis_result,created_at,"
             "documents(filename),"
             "pipeline_results(pipeline,answer,latency_ms,llm_prompt_tokens,llm_completion_tokens,"
             "f1_score,exact_match,navigation_path,fallback_used,top_similarity_score)",
