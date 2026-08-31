@@ -27,6 +27,7 @@ _CALIBRATION_FILE: Path = Path(__file__).resolve().parent.parent.parent / "calib
 # ── Provisional thresholds ────────────────────────────────────────────────────
 # Provisional threshold — replace with output of calibration/calibrate.py
 # once experiments are complete.
+# Note: THETA_1 = 11.5 was empirically determined during implementation testing, pending replacement by calibration/calibrate.py output.
 
 THETA_1: float = 11.5   # Axis 1: mean token surprisal threshold (bits)
 THETA_2: float = 0.15   # Axis 2: named entity density threshold

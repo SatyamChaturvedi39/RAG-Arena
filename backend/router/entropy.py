@@ -21,7 +21,7 @@ where:
 Threshold
 ---------
     THETA_1 is imported from ``router.router_config`` (single source of
-    truth).  The provisional value is 10.0 bits.  It will be replaced by
+    truth).  The provisional value is 11.5 bits.  It will be replaced by
     the output of ``calibration/calibrate.py`` once experiments are complete.
 
 When S(q) < THETA_1 the query is routed to PARAMETRIC (no retrieval).
