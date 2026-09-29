@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Scale } from 'lucide-react'
+import { Scale, Sparkles } from 'lucide-react'
 import Home from './pages/Home'
 import Compare from './pages/Compare'
 import History from './pages/History'
@@ -10,9 +10,9 @@ import Evaluation from './pages/Evaluation'
 import ServerStatus from './components/ServerStatus'
 
 const pageVariants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } },
-  exit: { opacity: 0, y: -6, transition: { duration: 0.14 } },
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
 }
 
 function AnimatedRoutes() {
@@ -31,19 +31,17 @@ function AnimatedRoutes() {
   )
 }
 
-
 function NavItem({ to, children }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive ? 'text-white' : 'text-slate-300 hover:text-white'
+        `px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
+          isActive
+            ? 'text-white bg-indigo-500/15 border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
         }`
       }
-      style={({ isActive }) => isActive ? {
-        background: 'rgba(26, 107, 138, 0.3)',
-        boxShadow: 'inset 0 0 0 1px rgba(26, 107, 138, 0.4)',
-      } : {}}
     >
       {children}
     </NavLink>
@@ -53,31 +51,27 @@ function NavItem({ to, children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col">
-        <header
-          className="sticky top-0 z-50 border-b text-white"
-          style={{
-            background: '#0C3547',
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-          }}
-        >
-          <div className="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-7">
+      <div className="min-h-screen flex flex-col bg-[#090D16] text-slate-100">
+        <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#090D16]/80 border-b border-slate-800/80">
+          <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-8">
               <NavLink
                 to="/"
-                className="flex items-center gap-2 select-none group"
+                className="flex items-center gap-2.5 select-none group"
               >
-                <div
-                  className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                  style={{ background: 'rgba(26, 107, 138, 0.3)', border: '1px solid rgba(26, 107, 138, 0.4)' }}
-                >
-                  <Scale className="w-3.5 h-3.5 text-white" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-indigo-500 to-sky-500 shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
+                  <Scale className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-mono font-semibold text-base tracking-tight text-white">
-                  RAG-Arena
-                </span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-bold text-lg tracking-tight text-white font-mono">
+                    RAG<span className="text-indigo-400">-Arena</span>
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    Dual-Axis
+                  </span>
+                </div>
               </NavLink>
-              <nav className="flex items-center gap-0.5">
+              <nav className="flex items-center gap-1">
                 <NavItem to="/dashboard">Dashboard</NavItem>
                 <NavItem to="/evaluation">Evaluation</NavItem>
                 <NavItem to="/">Documents</NavItem>
@@ -94,19 +88,19 @@ export default function App() {
           <AnimatedRoutes />
         </main>
 
-        <footer
-          className="border-t py-4 text-center text-s text-slate-600"
-          style={{ borderColor: 'rgba(30, 45, 66, 0.5)' }}
-        >
-          RAG-Arena ·{' '}
-          <a
-            href="https://github.com/SatyamChaturvedi39/RAG-Arena"
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-slate-400 transition-colors"
-          >
-            GitHub
-          </a>
+        <footer className="border-t py-6 text-center text-xs text-slate-500 border-slate-800/80">
+          <div className="flex items-center justify-center gap-3">
+            <span>RAG-Arena · Side-by-Side Benchmarking & Deterministic Routing</span>
+            <span>·</span>
+            <a
+              href="https://github.com/SatyamChaturvedi39/RAG-Arena"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-400 hover:text-indigo-400 transition-colors"
+            >
+              GitHub
+            </a>
+          </div>
         </footer>
       </div>
     </BrowserRouter>

@@ -202,3 +202,17 @@ def test_route_preview_dict_fields():
         assert isinstance(d["theta_1"], float)
         assert isinstance(d["theta_2"], float)
         assert isinstance(d["reason"], str)
+
+
+def test_deictic_document_query_routes_vectorless():
+    """Queries explicitly referencing the document/file must require retrieval and route to vectorless."""
+    for q in [
+        "what is this document about",
+        "summarize this document",
+        "what does the document say about revenue",
+        "give me an overview of this file",
+    ]:
+        res = route(q)
+        assert res["route"] == "vectorless", f"Expected vectorless for deictic query '{q}', got {res['route']}"
+        assert res["sqt"] is True
+

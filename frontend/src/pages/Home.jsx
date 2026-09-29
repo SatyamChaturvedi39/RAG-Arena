@@ -126,10 +126,10 @@ function UploadZone({ onUploaded }) {
         uploading && 'pointer-events-none opacity-60',
       )}
       style={isDragActive ? {
-        background: 'rgba(99,102,241,0.06)',
-        boxShadow: '0 0 50px rgba(99,102,241,0.14), inset 0 0 40px rgba(99,102,241,0.05)',
+        background: 'rgba(99,102,241,0.08)',
+        boxShadow: '0 0 50px rgba(99,102,241,0.18), inset 0 0 40px rgba(99,102,241,0.08)',
       } : {
-        background: 'rgba(15,22,35,0.4)',
+        background: 'rgba(15,23,42,0.6)',
       }}
     >
       <input {...getInputProps()} />
@@ -139,24 +139,24 @@ function UploadZone({ onUploaded }) {
           transition={{ type: 'spring', stiffness: 300 }}
           className="w-12 h-12 rounded-xl flex items-center justify-center"
           style={{
-            background: isDragActive ? 'rgba(99,102,241,0.2)' : 'rgba(30,45,66,0.8)',
-            border: `1px solid ${isDragActive ? 'rgba(99,102,241,0.4)' : 'rgba(30,45,66,1)'}`,
+            background: isDragActive ? 'rgba(99,102,241,0.25)' : 'rgba(30,41,59,0.8)',
+            border: `1px solid ${isDragActive ? 'rgba(99,102,241,0.5)' : 'rgba(51,65,85,0.8)'}`,
           }}
         >
-          {uploading  ? <Loader2    className="w-5 h-5 text-accent-400 animate-spin" />
-           : success  ? <CheckCircle2 className="w-5 h-5 text-green-400" />
-           : <Upload className={clsx('w-5 h-5 transition-colors', isDragActive ? 'text-accent-300' : 'text-slate-500')} />
+          {uploading  ? <Loader2    className="w-5 h-5 text-indigo-400 animate-spin" />
+           : success  ? <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+           : <Upload className={clsx('w-5 h-5 transition-colors', isDragActive ? 'text-indigo-300' : 'text-indigo-400')} />
           }
         </motion.div>
 
         <div>
-          <p className="text-slate-300 text-sm font-medium">
-            {uploading    ? 'Uploading…'
+          <p className="text-slate-100 text-sm font-semibold">
+            {uploading    ? 'Uploading document…'
              : success    ? 'Uploaded — processing started'
              : isDragActive ? 'Drop to upload'
              : 'Drag & drop a PDF, or click to browse'}
           </p>
-          <p className="text-slate-600 text-xs mt-1">10-Ks · legal contracts · technical manuals</p>
+          <p className="text-slate-400 text-xs mt-1">Research papers · 10-K filings · legal contracts · technical manuals</p>
         </div>
       </div>
 
@@ -180,14 +180,14 @@ function UploadZone({ onUploaded }) {
 
 function StatusBadge({ status, pct }) {
   const styles = {
-    ready:         { bg: 'rgba(74,222,128,0.10)',  color: '#4ade80', border: 'rgba(74,222,128,0.20)' },
-    failed:        { bg: 'rgba(248,113,113,0.10)', color: '#f87171', border: 'rgba(248,113,113,0.20)' },
-    pending:       { bg: 'rgba(251,191,36,0.10)',  color: '#fbbf24', border: 'rgba(251,191,36,0.20)' },
-    parsing:       { bg: 'rgba(96,165,250,0.10)',  color: '#60a5fa', border: 'rgba(96,165,250,0.20)' },
-    embedding:     { bg: 'rgba(99,102,241,0.10)',  color: '#818cf8', border: 'rgba(99,102,241,0.20)' },
-    tree_building: { bg: 'rgba(167,139,250,0.10)', color: '#a78bfa', border: 'rgba(167,139,250,0.20)' },
+    ready:         { bg: 'rgba(52,211,153,0.15)', color: '#34d399', border: 'rgba(52,211,153,0.30)' },
+    failed:        { bg: 'rgba(248,113,113,0.15)', color: '#f87171', border: 'rgba(248,113,113,0.30)' },
+    pending:       { bg: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: 'rgba(251,191,36,0.30)' },
+    parsing:       { bg: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: 'rgba(56,189,248,0.30)' },
+    embedding:     { bg: 'rgba(129,140,248,0.15)', color: '#818cf8', border: 'rgba(129,140,248,0.30)' },
+    tree_building: { bg: 'rgba(192,132,252,0.15)', color: '#c084fc', border: 'rgba(192,132,252,0.30)' },
   }
-  const s = styles[status] || { bg: 'rgba(30,45,66,0.6)', color: '#64748b', border: 'rgba(30,45,66,1)' }
+  const s = styles[status] || { bg: 'rgba(30,41,59,0.6)', color: '#94a3b8', border: 'rgba(51,65,85,1)' }
   return (
     <span
       className="text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap"
@@ -212,23 +212,21 @@ function DocumentRow({ doc, onDelete, onSelect }) {
   return (
     <motion.div
       layout
-      className="doc-card rounded-xl border p-4 flex items-center gap-4 transition-colors duration-200 group"
+      className="doc-card rounded-xl border p-4 flex items-center gap-4 transition-all duration-200 group bg-slate-900/80 backdrop-blur-md shadow-md"
       style={{
-        background:   'rgba(15,22,35,0.6)',
-        borderColor:  isIngesting ? 'rgba(99,102,241,0.22)' : 'rgba(30,45,66,0.7)',
+        borderColor: isIngesting ? 'rgba(99,102,241,0.4)' : '#1e293b',
       }}
-      whileHover={{ borderColor: 'rgba(42,61,88,0.9)' }}
+      whileHover={{ borderColor: 'rgba(99,102,241,0.5)' }}
     >
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: 'rgba(30,45,66,0.8)', border: '1px solid rgba(42,61,88,0.8)' }}
+        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-slate-800/80 border border-slate-700/80"
       >
-        <FileText className="w-4 h-4 text-slate-500" />
+        <FileText className="w-4 h-4 text-indigo-400" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-200 truncate">{d.filename}</p>
-        <p className="text-xs text-slate-600 mt-0.5">
+        <p className="text-sm font-semibold text-slate-100 truncate">{d.filename}</p>
+        <p className="text-xs text-slate-400 mt-0.5">
           {[
             d.page_count      && `${d.page_count} pages`,
             d.doc_type,
@@ -255,8 +253,8 @@ function DocumentRow({ doc, onDelete, onSelect }) {
         </button>
         <button
           onClick={() => onDelete(d.id)}
-          className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 transition-colors"
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.08)'}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.1)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -332,47 +330,51 @@ export default function Home() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="text-center space-y-3 pt-2"
+        className="text-center space-y-3 pt-4"
       >
-        <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-primary)] leading-tight">
-          RAG-Arena: Benchmarking Vector vs. Vectorless Retrieval
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 mb-2">
+          <span>⚔️</span>
+          <span>Deterministic Dual-Axis Benchmarking Arena</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+          Benchmarking Vector vs. Vectorless Retrieval
         </h1>
-        <p className="text-[var(--color-muted)] text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-          A research platform for empirical evaluation of two fundamentally different RAG paradigms. Upload any PDF, submit a query, and measure which retrieval strategy the Deterministic Dual-Axis Router recommends — and whether human judges agree.
+        <p className="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
+          An empirical research platform for evaluating RAG paradigms. Upload any document to test how the Deterministic Dual-Axis Router (DDAR) evaluates query surprisal and entity density.
         </p>
       </motion.section>
 
       {/* ── DDAR Pipeline Flow ────────────────────────────────────────────────── */}
-      <div className="max-w-4xl mx-auto card p-6 bg-white border border-[var(--color-border)] rounded-xl">
+      <div className="max-w-4xl mx-auto card p-6 bg-slate-900/75 border border-slate-800 shadow-2xl backdrop-blur-md rounded-2xl">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
-            <h4 className="font-semibold text-sm text-[var(--color-primary)]">1. Query Analysis</h4>
-            <p className="text-xs text-[var(--color-muted)] mt-1 font-mono">S(q) computed</p>
-            <p className="text-xs text-[var(--color-muted)] font-mono">D(q) computed</p>
+          <div className="flex-1 text-center p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-sky-400">1. Query Analysis</h4>
+            <p className="text-xs text-slate-400 mt-1 font-mono">S(q) Surprisal</p>
+            <p className="text-xs text-slate-400 font-mono">D(q) Density & SQT</p>
           </div>
           
-          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          <div className="text-slate-600 font-bold hidden md:block">→</div>
           
-          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
-            <h4 className="font-semibold text-sm text-[var(--color-primary)]">2. DDAR Routes</h4>
-            <p className="text-xs text-[var(--color-muted)] mt-1">Parametric /</p>
-            <p className="text-xs text-[var(--color-muted)]">Vector / Vectorless</p>
+          <div className="flex-1 text-center p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-amber-400">2. DDAR Routes</h4>
+            <p className="text-xs text-slate-400 mt-1">Parametric /</p>
+            <p className="text-xs text-slate-400">Vector / Vectorless</p>
           </div>
           
-          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          <div className="text-slate-600 font-bold hidden md:block">→</div>
           
-          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
-            <h4 className="font-semibold text-sm text-[var(--color-primary)]">3. Both Pipelines Run</h4>
-            <p className="text-xs text-[var(--color-muted)] mt-1">Vector + Vectorless</p>
-            <p className="text-xs text-[var(--color-muted)]">answers generated</p>
+          <div className="flex-1 text-center p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-indigo-400">3. Pipelines Run</h4>
+            <p className="text-xs text-slate-400 mt-1">Vector + Vectorless</p>
+            <p className="text-xs text-slate-400">Parallel execution</p>
           </div>
           
-          <div className="text-slate-400 font-bold hidden md:block">→</div>
+          <div className="text-slate-600 font-bold hidden md:block">→</div>
           
-          <div className="flex-1 text-center p-3 rounded-lg border border-[var(--color-border)] bg-[#F7F9FB] w-full md:w-auto">
-            <h4 className="font-semibold text-sm text-[var(--color-primary)]">4. You Judge</h4>
-            <p className="text-xs text-[var(--color-muted)] mt-1">Vote on which</p>
-            <p className="text-xs text-[var(--color-muted)] font-normal">answer wins</p>
+          <div className="flex-1 text-center p-3.5 rounded-xl border border-slate-800 bg-slate-950/70 w-full md:w-auto">
+            <h4 className="font-semibold text-sm text-emerald-400">4. Human Vote</h4>
+            <p className="text-xs text-slate-400 mt-1">Crowdsource</p>
+            <p className="text-xs text-slate-400">Preference logging</p>
           </div>
         </div>
       </div>
@@ -380,11 +382,11 @@ export default function Home() {
       {/* ── Divider ──────────────────────────────────────────────────────────── */}
       <div className="max-w-2xl mx-auto">
         <div
-          className="flex items-center gap-3 text-xs text-[var(--color-muted)] uppercase tracking-widest font-semibold"
+          className="flex items-center gap-3 text-xs text-slate-400 uppercase tracking-widest font-semibold"
         >
-          <div className="flex-1 h-px bg-[var(--color-border)]" />
-          upload a document to start
-          <div className="flex-1 h-px bg-[var(--color-border)]" />
+          <div className="flex-1 h-px bg-slate-800" />
+          Upload a document to start
+          <div className="flex-1 h-px bg-slate-800" />
         </div>
       </div>
 
@@ -415,12 +417,11 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-12 rounded-2xl border"
-            style={{ borderColor: 'rgba(30,45,66,0.4)', borderStyle: 'dashed' }}
+            className="text-center py-12 rounded-2xl border border-dashed border-slate-800 bg-slate-900/40"
           >
-            <p className="text-slate-600 text-sm">No documents yet.</p>
-            <p className="text-slate-700 text-xs mt-1">
-              Upload a document to run evaluations. Your uploads are private to this browser session.
+            <p className="text-slate-300 text-sm font-medium">No documents uploaded yet.</p>
+            <p className="text-slate-400 text-xs mt-1">
+              Upload a document above to run side-by-side evaluations. Uploads are private to this browser session.
             </p>
           </motion.div>
         ) : (

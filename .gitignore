@@ -45,6 +45,8 @@ Thumbs.db
 # Uploads (PDFs stored in Supabase Storage, not locally)
 uploads/
 *.pdf
+RAG Arena.docx
+scratch/
 
 # Eval data (large)
 eval/data/*.json.gz

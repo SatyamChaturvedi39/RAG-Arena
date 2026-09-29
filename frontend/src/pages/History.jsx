@@ -11,16 +11,17 @@ import {
   Filter,
   Calendar,
   Layers,
-  Cpu,
   ChevronDown,
   ChevronUp,
   RefreshCw,
   ArrowRight,
-  TrendingDown,
   Clock,
   Compass,
   FileText,
-  Trash2
+  Trash2,
+  Sparkles,
+  Zap,
+  TreePine
 } from 'lucide-react'
 
 const getSessionId = () => {
@@ -73,7 +74,6 @@ export default function History() {
     }
   }
 
-  // Reload history when selected document changes
   useEffect(() => {
     loadData(true)
   }, [selectedDocId])
@@ -86,7 +86,6 @@ export default function History() {
     const nextOffset = offset + limit
     setOffset(nextOffset)
     const sessionId = getSessionId()
-    // Trigger history load for next page
     getQueryHistory(selectedDocId || null, limit, nextOffset, sessionId).then(res => {
       setQueries(prev => [...prev, ...(res.data.items || [])])
       setTotal(res.data.total || 0)
@@ -116,7 +115,6 @@ export default function History() {
     navigate('/compare', { state: { documentId: docId, query: queryText } })
   }
 
-  // Filter history by search query
   const filteredQueries = queries.filter(q =>
     q.query_text.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -137,39 +135,39 @@ export default function History() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto text-[var(--color-text)]">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2 text-[var(--color-primary)]">
-          <Layers className="w-8 h-8 text-[var(--color-accent)]" />
+        <h1 className="text-3xl font-bold flex items-center gap-3 text-white tracking-tight">
+          <Layers className="w-7 h-7 text-indigo-400" />
           Query History
         </h1>
-        <p className="text-sm text-[var(--color-muted)]">
-          Browse, replay, and compare past queries executed across uploaded documents.
+        <p className="text-sm text-slate-400 mt-1">
+          Review, analyze, and instantly replay past arena comparisons across your documents.
         </p>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="card p-4 flex flex-col md:flex-row gap-4 items-center bg-white border border-[var(--color-border)] rounded-xl">
+      <div className="p-4 flex flex-col md:flex-row gap-4 items-center bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md">
         {/* Search */}
         <div className="relative w-full md:flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search queries..."
+            placeholder="Search query text..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="input w-full pl-9"
+            className="input w-full pl-10"
           />
         </div>
 
         {/* Document Selector */}
         <div className="relative w-full md:w-64">
-          <Filter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Filter className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <select
             value={selectedDocId}
             onChange={(e) => setSelectedDocId(e.target.value)}
-            className="input w-full pl-9 appearance-none cursor-pointer"
+            className="input w-full pl-10 appearance-none cursor-pointer"
           >
             <option value="">All Documents</option>
             {documents.map((doc) => (
@@ -184,7 +182,7 @@ export default function History() {
         {/* Reload */}
         <button
           onClick={() => loadData(true)}
-          className="btn-secondary p-2 flex shrink-0 items-center justify-center w-full md:w-auto"
+          className="btn-secondary p-2.5 flex shrink-0 items-center justify-center w-full md:w-auto"
           title="Reload History"
         >
           <RefreshCw className="w-4 h-4" />
@@ -193,69 +191,64 @@ export default function History() {
 
       {/* Query List */}
       <div className="space-y-4">
-        {filteredQueries.length > 0 ? (
+        {loading && queries.length === 0 ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton h-24 rounded-2xl" />
+            ))}
+          </div>
+        ) : filteredQueries.length > 0 ? (
           filteredQueries.map((q) => {
             const isExpanded = expandedQueryId === q.id
             const vectorRes = q.pipeline_results?.find(r => r.pipeline === 'vector')
             const vectorlessRes = q.pipeline_results?.find(r => r.pipeline === 'vectorless')
+            const route = q.dual_axis_result?.route || q.router_recommended
 
             return (
               <div
                 key={q.id}
-                className="card p-0 overflow-hidden border border-[var(--color-border)] hover:border-[var(--color-accent)] bg-white transition-all duration-200"
+                className="overflow-hidden border border-slate-800 hover:border-slate-700 bg-slate-900/80 shadow-lg backdrop-blur-md rounded-2xl transition-all duration-200"
               >
                 {/* Header Summary (Clickable) */}
                 <div
                   onClick={() => toggleExpand(q.id)}
                   className="p-5 flex items-start justify-between gap-4 cursor-pointer select-none"
                 >
-                  <div className="space-y-1.5 md:flex-1">
+                  <div className="space-y-2 md:flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1 text-[10px] text-[var(--color-muted)] font-mono">
+                      <span className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
                         <Calendar className="w-3 h-3" /> {formatDate(q.created_at)}
                       </span>
                       <span 
-                        className="flex items-center gap-1 text-[10px] text-[var(--color-accent)] font-semibold bg-slate-50 px-2 py-0.5 rounded-full border border-[var(--color-border)] max-w-[200px] truncate"
+                        className="flex items-center gap-1 text-[11px] text-slate-300 font-semibold bg-slate-800/80 px-2.5 py-0.5 rounded-full border border-slate-700 max-w-[220px] truncate"
                         title={q.document_filename || getDocName(q.document_id)}
                       >
-                        <FileText className="w-3 h-3" /> {q.document_filename || getDocName(q.document_id)}
+                        <FileText className="w-3 h-3 text-sky-400" /> {q.document_filename || getDocName(q.document_id)}
                       </span>
-                      {q.query_type && (
-                        <span className="text-[10px] font-mono text-[var(--color-muted)] bg-slate-50 border border-[var(--color-border)] px-1.5 py-0.5 rounded">
-                          {q.query_type.replace('_', ' ')}
+                      {route && (
+                        <span
+                          className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                            route === 'parametric'
+                              ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
+                              : route === 'vector'
+                              ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-300"
+                              : "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                          }`}
+                        >
+                          {route === 'parametric'
+                            ? '⚡ Parametric'
+                            : route === 'vector'
+                            ? '🎯 Vector RAG'
+                            : '🌲 Vectorless RAG'}
                         </span>
                       )}
-                      {q.dual_axis_result && q.dual_axis_result.route ? (
-                        <>
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                              q.dual_axis_result.route === 'parametric'
-                                ? "bg-amber-500/10 border-amber-500/30 text-[#E6A817]"
-                                : q.dual_axis_result.route === 'vector'
-                                ? "bg-indigo-500/10 border-indigo-500/30 text-[#1A6B8A]"
-                                : "bg-teal-500/10 border-teal-500/30 text-[#2D6A4F]"
-                            }`}
-                          >
-                            {q.dual_axis_result.route === 'parametric'
-                              ? 'Parametric'
-                              : q.dual_axis_result.route === 'vector'
-                              ? 'Vector'
-                              : 'Vectorless'}
-                          </span>
-                          {q.dual_axis_result.s_q != null && (
-                            <span className="text-[10px] font-mono text-[var(--color-muted)] self-center ml-0.5">
-                              S={q.dual_axis_result.s_q.toFixed(1)}
-                              {q.dual_axis_result.d_q != null ? ` D=${q.dual_axis_result.d_q.toFixed(2)}` : ''}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-zinc-500/10 border-zinc-500/30 text-zinc-400">
-                          Pre-DDAR
+                      {q.dual_axis_result?.s_q != null && (
+                        <span className="text-[10px] font-mono text-slate-400 self-center">
+                          S(q)={q.dual_axis_result.s_q.toFixed(1)} bits
                         </span>
                       )}
                     </div>
-                    <p className="text-[var(--color-text)] font-semibold text-sm md:text-base pr-4">
+                    <p className="text-white font-medium text-base pr-4">
                       {q.query_text}
                     </p>
                   </div>
@@ -266,15 +259,15 @@ export default function History() {
                         e.stopPropagation()
                         handleReRun(q.document_id, q.query_text)
                       }}
-                      className="btn-secondary py-1 px-2.5 text-xs flex items-center gap-1 border-indigo-500/20 hover:border-indigo-500/40 text-indigo-400 bg-indigo-500/5"
+                      className="py-1.5 px-3 text-xs font-semibold flex items-center gap-1.5 rounded-xl border border-indigo-500/30 text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors"
                       title="Run comparison again"
                     >
-                      Compare <ArrowRight className="w-3 h-3" />
+                      Compare <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={(e) => handleDelete(q.id, e)}
-                      className="btn-secondary p-1.5 text-xs flex items-center justify-center border-red-200 hover:border-red-500 hover:text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg text-slate-500 bg-white"
-                      title="Delete query history entry"
+                      className="p-2 text-xs flex items-center justify-center border border-slate-800 hover:border-rose-500/40 hover:text-rose-400 hover:bg-rose-500/10 transition-colors rounded-xl text-slate-400 bg-slate-900"
+                      title="Delete query entry"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -289,79 +282,74 @@ export default function History() {
                       initial={{ height: 0 }}
                       animate={{ height: 'auto' }}
                       exit={{ height: 0 }}
-                      className="border-t border-slate-200 bg-slate-50/50 overflow-hidden"
+                      className="border-t border-slate-800 bg-slate-950/70 overflow-hidden"
                     >
-                      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
                         {/* Vector RAG answer panel */}
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                            <span className="badge-vector">Vector RAG</span>
-                            <div className="flex gap-2">
-                              {vectorRes && (
-                                <>
-                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
-                                    <Clock className="w-3 h-3" /> {vectorRes.latency_ms}ms
-                                  </span>
-                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
-                                    <Compass className="w-3 h-3" /> {vectorRes.llm_prompt_tokens + vectorRes.llm_completion_tokens} tokens
-                                  </span>
-                                </>
-                              )}
-                            </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                            <span className="badge-vector flex items-center gap-1.5">
+                              <Zap className="w-3 h-3 text-indigo-400" /> Vector RAG
+                            </span>
+                            {vectorRes && (
+                              <div className="flex gap-3 text-[11px] text-slate-400 font-mono">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-sky-400" /> {vectorRes.latency_ms}ms
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Compass className="w-3 h-3 text-indigo-400" /> {(vectorRes.llm_prompt_tokens || 0) + (vectorRes.llm_completion_tokens || 0)} tok
+                                </span>
+                              </div>
+                            )}
                           </div>
                           {vectorRes ? (
                             <div className="space-y-2">
-                              <p className="text-[var(--color-text)] text-sm leading-relaxed whitespace-pre-line bg-white p-4 rounded-xl border border-slate-200 font-sans">
+                              <div className="text-slate-100 text-sm leading-relaxed whitespace-pre-line bg-slate-900/90 p-4 rounded-xl border border-slate-800 font-sans">
                                 {vectorRes.answer}
-                              </p>
+                              </div>
                               {vectorRes.top_similarity_score !== null && (
-                                <div className="text-[10px] text-slate-500 font-mono flex gap-1">
+                                <div className="text-[11px] text-slate-400 font-mono flex gap-1">
                                   <span>Top similarity:</span>
-                                  <span className="text-amber-600 font-semibold">{vectorRes.top_similarity_score?.toFixed(4) || 'N/A'}</span>
+                                  <span className="text-indigo-400 font-semibold">{vectorRes.top_similarity_score?.toFixed(4) || 'N/A'}</span>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <p className="text-xs text-slate-400 italic">No Vector pipeline results recorded for this run.</p>
+                            <p className="text-xs text-slate-500 italic">No Vector pipeline results recorded.</p>
                           )}
                         </div>
 
                         {/* Vectorless RAG answer panel */}
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center pb-2 border-b border-slate-200">
-                            <span className="badge-vectorless">Vectorless RAG</span>
-                            <div className="flex gap-2">
-                              {vectorlessRes && (
-                                <>
-                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
-                                    <Clock className="w-3 h-3" /> {vectorlessRes.latency_ms}ms
-                                  </span>
-                                  <span className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
-                                    <Compass className="w-3 h-3" /> {vectorlessRes.llm_prompt_tokens + vectorlessRes.llm_completion_tokens} tokens
-                                  </span>
-                                </>
-                              )}
-                            </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                            <span className="badge-vectorless flex items-center gap-1.5">
+                              <TreePine className="w-3 h-3 text-emerald-400" /> Vectorless RAG
+                            </span>
+                            {vectorlessRes && (
+                              <div className="flex gap-3 text-[11px] text-slate-400 font-mono">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-sky-400" /> {vectorlessRes.latency_ms}ms
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Compass className="w-3 h-3 text-emerald-400" /> {(vectorlessRes.llm_prompt_tokens || 0) + (vectorlessRes.llm_completion_tokens || 0)} tok
+                                </span>
+                              </div>
+                            )}
                           </div>
                           {vectorlessRes ? (
                             <div className="space-y-2">
-                              <p className="text-[var(--color-text)] text-sm leading-relaxed whitespace-pre-line bg-white p-4 rounded-xl border border-slate-200 font-sans">
+                              <div className="text-slate-100 text-sm leading-relaxed whitespace-pre-line bg-slate-900/90 p-4 rounded-xl border border-slate-800 font-sans">
                                 {vectorlessRes.answer}
-                              </p>
+                              </div>
                               {vectorlessRes.navigation_path && (
-                                <div className="text-[10px] text-slate-500 font-mono flex flex-col gap-1 p-2 rounded bg-slate-100/50 border border-slate-200">
-                                  <span className="text-emerald-700 font-semibold uppercase tracking-wider text-[8px]">Navigation Path</span>
-                                  <span>{vectorlessRes.navigation_path}</span>
+                                <div className="text-[11px] text-slate-400 font-mono flex flex-col gap-1 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
+                                  <span className="text-emerald-400 font-semibold uppercase tracking-wider text-[9px]">Navigation Breadcrumb</span>
+                                  <span className="text-slate-200">{vectorlessRes.navigation_path}</span>
                                 </div>
-                              )}
-                              {vectorlessRes.fallback_used && (
-                                <span className="inline-block text-[9px] font-bold text-amber-600 uppercase tracking-wider bg-amber-500/10 px-1.5 py-0.5 rounded">
-                                  Fallback to Vector Used
-                                </span>
                               )}
                             </div>
                           ) : (
-                            <p className="text-xs text-slate-400 italic">No Vectorless pipeline results recorded for this run.</p>
+                            <p className="text-xs text-slate-500 italic">No Vectorless pipeline results recorded.</p>
                           )}
                         </div>
                       </div>
@@ -372,25 +360,24 @@ export default function History() {
             )
           })
         ) : (
-          <div className="card p-12 text-center text-slate-400 space-y-4 bg-white border border-[var(--color-border)] rounded-xl">
-            <Layers className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-sm">No past comparison queries match your current filter.</p>
-            <button onClick={() => navigate('/compare')} className="btn-primary text-xs">
+          <div className="p-12 text-center text-slate-400 space-y-3 bg-slate-900/60 border border-slate-800 rounded-2xl shadow-xl">
+            <Layers className="w-10 h-10 text-slate-600 mx-auto" />
+            <p className="text-sm font-medium text-slate-300">No past queries match your filter.</p>
+            <button onClick={() => navigate('/compare')} className="btn-primary text-xs mx-auto">
               Run New Comparison
             </button>
           </div>
         )}
       </div>
 
-      {/* Load More Button */}
-      {total > queries.length && (
-        <div className="flex justify-center pt-4">
+      {/* Pagination Load More */}
+      {queries.length < total && (
+        <div className="text-center pt-2">
           <button
             onClick={loadMore}
-            disabled={loading}
-            className="btn-secondary text-xs flex items-center gap-2"
+            className="btn-secondary text-xs px-6 py-2.5"
           >
-            {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Load More Queries'}
+            Load Older Queries ({total - queries.length} remaining)
           </button>
         </div>
       )}

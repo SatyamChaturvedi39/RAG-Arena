@@ -46,14 +46,19 @@ async def summarize_internal_nodes(
                 title=node.title,
                 text_preview=text_preview,
             )
-            from llm.groq_client import chat
-            summary, _, _ = await chat(
-                messages=[{"role": "user", "content": prompt}],
-                model=settings.groq_nav_model,
-                max_tokens=80,
-                temperature=0.0,
-            )
-            node.summary = summary.strip()
+            try:
+                from llm.groq_client import chat
+                summary, _, _ = await chat(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=settings.groq_nav_model,
+                    max_tokens=80,
+                    temperature=0.0,
+                )
+                node.summary = summary.strip()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("Failed to summarize node %s: %s", node.title, e)
+                node.summary = (node.text[:120] + "...") if node.text else ""
             # Small delay to respect Groq TPM limits during bulk ingestion
             await asyncio.sleep(0.2)
 

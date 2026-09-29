@@ -4,6 +4,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from postgrest.base_request_builder import CountMethod
 from pydantic import BaseModel
 
 from config import get_settings
@@ -138,7 +139,7 @@ async def list_documents(
     client = get_client()
     query = client.table("documents").select(
         "id,filename,status,progress_pct,doc_type,structure_score,total_chunks,total_tree_nodes,page_count,error_message",
-        count="exact",
+        count=CountMethod.exact,
     ).order("created_at", desc=True).range(offset, offset + limit - 1)
 
     if status:

@@ -34,8 +34,9 @@ def route(query: str) -> dict:
     """
     # -- Axis 1: Retrieval Necessity ----------------------------------------
     s_q = compute_mean_token_surprisal(query)
+    sqt = compute_sqt_flag(query)
 
-    if s_q < THETA_1:
+    if s_q < THETA_1 and not sqt:
         return {
             "route":          "parametric",
             "axis_triggered": 1,
@@ -52,9 +53,9 @@ def route(query: str) -> dict:
 
     # -- Axis 2: Retrieval Mode ---------------------------------------------
     d_q = compute_entity_density(query)
-    sqt = compute_sqt_flag(query)
 
     if d_q > THETA_2 or sqt:
+        reason_lead = f"S(q)={s_q:.3f} >= theta_1 AND " if s_q >= THETA_1 else f"S(q)={s_q:.3f} < theta_1 (SQT override) AND "
         return {
             "route":          "vectorless",
             "axis_triggered": 2,
@@ -64,7 +65,7 @@ def route(query: str) -> dict:
             "theta_1":        THETA_1,
             "theta_2":        THETA_2,
             "reason": (
-                f"S(q)={s_q:.3f} >= theta_1 AND "
+                f"{reason_lead}"
                 f"(D(q)={d_q:.3f} > theta_2={THETA_2} OR SQT={sqt}) "
                 "-- entity-dense or structured, use structural navigation"
             ),

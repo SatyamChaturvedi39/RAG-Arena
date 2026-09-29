@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
 
     # Model config — can be overridden via env vars without code changes
-    groq_nav_model: str = "llama-3.1-8b-instant"       # routing + tree navigation (fast/cheap)
-    groq_answer_model: str = "llama-3.3-70b-versatile" # final answer generation (quality)
+    groq_nav_model: str = "qwen/qwen3.8-27b"           # routing + tree navigation (fast/cheap)
+    groq_answer_model: str = "openai/gpt-oss-120b"     # final answer generation (quality)
     # gemini-embedding-001 is the available free-tier model (v1beta, supports embedContent)
     # text-embedding-004 is NOT available with this key's quota
     gemini_embed_model: str = "gemini-embedding-001"

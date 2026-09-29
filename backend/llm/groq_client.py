@@ -9,13 +9,22 @@ import asyncio
 import json
 from typing import Any
 
-from groq import AsyncGroq
+from groq import AsyncGroq, NotFoundError, APIStatusError
 from tenacity import (
     retry,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Never retry 404 / NotFoundError since the model does not exist."""
+    if isinstance(exc, NotFoundError):
+        return False
+    if isinstance(exc, APIStatusError) and exc.status_code == 404:
+        return False
+    return True
 
 
 def _get_client() -> AsyncGroq:
@@ -24,7 +33,7 @@ def _get_client() -> AsyncGroq:
 
 
 @retry(
-    retry=retry_if_exception_type(Exception),
+    retry=retry_if_exception(_is_retryable),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     stop=stop_after_attempt(4),
     reraise=True,
@@ -55,7 +64,16 @@ async def chat(
         kwargs["response_format"] = response_format
 
     client = _get_client()
-    response = await client.chat.completions.create(**kwargs)
+    try:
+        response = await client.chat.completions.create(**kwargs)
+    except NotFoundError:
+        # Fallback to an active model if configured model is decommissioned or inaccessible
+        fallback = "qwen/qwen3.8-27b"
+        if kwargs["model"] != fallback:
+            kwargs["model"] = fallback
+            response = await client.chat.completions.create(**kwargs)
+        else:
+            raise
     content = response.choices[0].message.content or ""
     usage = response.usage
     return content, usage.prompt_tokens, usage.completion_tokens

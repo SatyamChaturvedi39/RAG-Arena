@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from postgrest.base_request_builder import CountMethod
 from pydantic import BaseModel
 
 from db.supabase_client import get_client
@@ -52,6 +53,7 @@ class CompareResponse(BaseModel):
     vector: PipelineResult
     vectorless: PipelineResult
     dual_axis_result: dict
+    parametric_answer: Optional[str] = None
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -127,7 +129,31 @@ async def compare(req: CompareRequest):
         _safe_run(run_vectorless_rag, req.document_id, req.query)
     )
 
-    vector_result, vectorless_result = await asyncio.gather(vector_task, vectorless_task)
+    async def _run_parametric() -> Optional[str]:
+        if duar_dict.get("route") == "parametric":
+            try:
+                from llm import groq_client
+                from config import get_settings
+                settings = get_settings()
+                ans, _, _ = await groq_client.chat(
+                    messages=[
+                        {"role": "system", "content": "You are a concise, helpful assistant. Answer the user question directly and accurately from your general knowledge."},
+                        {"role": "user", "content": req.query}
+                    ],
+                    model=settings.groq_answer_model,
+                    temperature=0.2,
+                    max_tokens=512,
+                )
+                return ans
+            except Exception:
+                return None
+        return None
+
+    parametric_task = asyncio.create_task(_run_parametric())
+
+    vector_result, vectorless_result, parametric_answer = await asyncio.gather(
+        vector_task, vectorless_task, parametric_task
+    )
 
     # Persist results
     for pipeline, result in [("vector", vector_result), ("vectorless", vectorless_result)]:
@@ -168,6 +194,7 @@ async def compare(req: CompareRequest):
         vector=vector_result,
         vectorless=vectorless_result,
         dual_axis_result=duar_dict,
+        parametric_answer=parametric_answer,
     )
 
 
@@ -221,13 +248,19 @@ async def route_preview(
         if d_q is not None and d_q > theta_2:
             parts.append(f"entity density of {d_q:.3f} (above threshold {theta_2})")
         if sqt:
-            parts.append("a structural/catalogue lookup pattern was detected")
+            parts.append("a structural/document reference pattern was detected (SQT=True)")
         detail = " and ".join(parts) if parts else "entity-dense or structured content"
-        explanation = (
-            f"Query has mean token surprisal of {s_q:.1f} bits (above threshold "
-            f"{theta_1}), so retrieval is needed. The query has {detail}, so "
-            f"structural tree navigation (vectorless) is selected."
-        )
+        if s_q >= theta_1:
+            explanation = (
+                f"Query has mean token surprisal of {s_q:.1f} bits (above threshold "
+                f"{theta_1}), so retrieval is needed. The query has {detail}, so "
+                f"structural tree navigation (vectorless) is selected."
+            )
+        else:
+            explanation = (
+                f"Query has low lexical surprisal ({s_q:.1f} bits) but contains {detail}, "
+                f"so retrieval is required. Structural tree navigation (vectorless) is selected."
+            )
     else:  # vector
         d_q = decision["d_q"]
         explanation = (
@@ -264,7 +297,7 @@ async def query_history(
             "documents(filename),"
             "pipeline_results(pipeline,answer,latency_ms,llm_prompt_tokens,llm_completion_tokens,"
             "f1_score,exact_match,navigation_path,fallback_used,top_similarity_score)",
-            count="exact",
+            count=CountMethod.exact,
         )
         .order("created_at", desc=True)
         .range(offset, offset + limit - 1)

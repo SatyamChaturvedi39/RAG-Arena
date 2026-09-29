@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter
+from postgrest.base_request_builder import CountMethod
 from db.supabase_client import get_client
 
 router = APIRouter()
@@ -18,7 +19,7 @@ async def metrics_summary(days: int = 7):
     # Total queries in the window
     queries_result = (
         client.table("queries")
-        .select("id,query_type,router_recommended,dual_axis_result", count="exact")
+        .select("id,query_type,router_recommended,dual_axis_result", count=CountMethod.exact)
         .gte("created_at", cutoff)
         .execute()
     )
@@ -67,7 +68,7 @@ async def metrics_summary(days: int = 7):
 
 
 @router.get("/history")
-async def metrics_history(limit: int = 100, pipeline: str = None):
+async def metrics_history(limit: int = 100, pipeline: str | None = None):
     """
     Time-series points for the latency chart.
     """

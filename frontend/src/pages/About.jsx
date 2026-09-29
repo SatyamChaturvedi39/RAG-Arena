@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { GitBranch, Shield, Zap, Cpu, Award, BookOpen, ChevronRight, Layers, FileText } from 'lucide-react'
+import { GitBranch, Shield, Zap, Cpu, Award, BookOpen, ChevronRight, Layers, Sparkles, CheckCircle2 } from 'lucide-react'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -21,33 +21,40 @@ export default function About() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-12 max-w-5xl mx-auto text-[var(--color-text)] animate-fade-in"
+      className="space-y-10 max-w-5xl mx-auto text-slate-200 animate-fade-in"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="text-center space-y-4">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-[var(--color-primary)]">
+      <motion.div variants={itemVariants} className="text-center space-y-3 pt-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Research Foundations & Architecture</span>
+        </div>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
           About RAG-Arena
         </h1>
-        <p className="text-[var(--color-muted)] max-w-2xl mx-auto text-lg">
-          A side-by-side empirical chatbot-arena for evaluating Vector RAG vs Vectorless Hierarchical RAG.
+        <p className="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+          An empirical side-by-side benchmarking platform evaluating dense Vector RAG vs. Vectorless Hierarchical Tree RAG under the Deterministic Dual-Axis Router (DDAR).
         </p>
       </motion.div>
 
       {/* Intro Section */}
-      <motion.div variants={itemVariants} className="card p-8 bg-white border border-[var(--color-border)] rounded-xl relative overflow-hidden">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-[var(--color-primary)]">
-          <BookOpen className="w-6 h-6 text-[var(--color-accent)]" />
+      <motion.div
+        variants={itemVariants}
+        className="card p-7 sm:p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md relative overflow-hidden"
+      >
+        <h2 className="text-xl sm:text-2xl font-bold mb-4 flex items-center gap-2.5 text-white">
+          <Sparkles className="w-5 h-5 text-indigo-400" />
           The Research Hypothesis
         </h2>
-        <div className="space-y-4 text-[var(--color-text)] leading-relaxed text-base">
+        <div className="space-y-4 text-slate-300 leading-relaxed text-sm sm:text-base">
           <p>
-            Standard <strong>Vector RAG</strong> converts queries into dense embeddings and retrieves document chunks by cosine similarity. It handles broad semantic questions well but is unnecessary for queries the language model can already answer, and suboptimal for queries requiring precise structural navigation.
+            Standard <strong className="text-sky-300">Vector RAG</strong> converts documents and queries into dense embeddings, retrieving top chunks via cosine similarity. While effective for broad associative questions, it wastes API calls and compute on queries the model already knows (open-domain common knowledge), and frequently loses structural context in nested documents.
           </p>
           <p>
-            <strong>Vectorless RAG</strong> constructs a hierarchical section tree from the document's own structure — headings, fonts, and numbering — and uses an LLM to navigate it branch by branch. It handles entity-dense and structurally precise queries better than similarity search, with zero embedding cost.
+            <strong className="text-emerald-300">Vectorless RAG</strong> extracts the document's true section hierarchy (headings, TOC, numbering) at ingest time. An LLM recursively navigates this tree branch by branch—eliminating vector database lookups and embedding costs completely while preserving hierarchical context.
           </p>
           <p>
-            <strong>RAG-Arena</strong> implements a Deterministic Dual-Axis Router (DDAR) that analyses each query before retrieval begins and routes it to the most appropriate path: parametric (no retrieval), vector retrieval, or vectorless retrieval. Both pipelines then run so human judges can evaluate whether the router's recommendation matched the better answer.
+            <strong className="text-amber-300">RAG-Arena</strong> introduces the <em>Deterministic Dual-Axis Router (DDAR)</em>: an upfront zero-neural-inference classifier that computes query token surprisal $S(q)$ and named entity density $D(q)$. It deterministically routes queries to <span className="text-amber-400 font-semibold">Parametric (No retrieval)</span>, <span className="text-sky-400 font-semibold">Vector RAG</span>, or <span className="text-emerald-400 font-semibold">Vectorless RAG</span>, enabling direct comparative evaluation and human preference benchmarking.
           </p>
         </div>
       </motion.div>
@@ -55,195 +62,206 @@ export default function About() {
       {/* Pipelines side-by-side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Vector RAG Column */}
-        <motion.div variants={itemVariants} className="panel-vector p-6 flex flex-col justify-between bg-white border border-[var(--color-border)] rounded-xl">
+        <motion.div
+          variants={itemVariants}
+          className="p-6 flex flex-col justify-between bg-slate-900/80 border border-sky-500/20 rounded-2xl shadow-lg backdrop-blur-md"
+        >
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="badge-vector">Vector RAG</span>
-              <Cpu className="w-5 h-5 text-[var(--color-vector)]" />
+              <Cpu className="w-5 h-5 text-sky-400" />
             </div>
-            <h3 className="text-xl font-bold mb-3 text-[var(--color-primary)]">Semantic & Dense Retrieval</h3>
-            <ul className="space-y-3 text-[var(--color-text)] text-sm">
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vector)] shrink-0 mt-0.5" />
-                <span><strong>Chunking:</strong> Sliding-window splitting (512-token chunks with 64-token overlap).</span>
+            <h3 className="text-lg font-bold mb-3 text-white">Semantic & Dense Similarity</h3>
+            <ul className="space-y-3 text-slate-300 text-sm">
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Chunking:</strong> Sliding-window splitting (512-token chunks, 64-token overlap).</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vector)] shrink-0 mt-0.5" />
-                <span><strong>Indexing:</strong> Dense vector representations via Gemini <code>gemini-embedding-001</code>.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Indexing:</strong> Dense 768-dim embeddings via Google Gemini <code>text-embedding-004</code>.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vector)] shrink-0 mt-0.5" />
-                <span><strong>Retrieval:</strong> Nearest-neighbor cosine search using PostgreSQL <code>pgvector</code> HNSW indices.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Retrieval:</strong> Cosine similarity search using PostgreSQL <code>pgvector</code> HNSW indices.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vector)] shrink-0 mt-0.5" />
-                <span><strong>Generation:</strong> LLM synthesizes an answer using top-k retrieved text blocks.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Generation:</strong> LLM synthesizes an answer conditioned on top-k retrieved chunks.</span>
               </li>
             </ul>
           </div>
-          <div className="mt-6 pt-4 border-t border-[var(--color-border)] text-xs text-[var(--color-accent)] font-semibold">
-            ⚡ Best for: Fuzzy semantic queries, keyword cross-referencing, multi-document synthesis.
+          <div className="mt-6 pt-4 border-t border-slate-800 text-xs text-sky-300 font-medium">
+            ⚡ Optimal for: Fuzzy semantic queries, keyword matches across disjoint text chunks.
           </div>
         </motion.div>
 
         {/* Vectorless RAG Column */}
-        <motion.div variants={itemVariants} className="panel-vectorless p-6 flex flex-col justify-between bg-white border border-[var(--color-border)] rounded-xl">
+        <motion.div
+          variants={itemVariants}
+          className="p-6 flex flex-col justify-between bg-slate-900/80 border border-emerald-500/20 rounded-2xl shadow-lg backdrop-blur-md"
+        >
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="badge-vectorless">Vectorless RAG</span>
-              <Layers className="w-5 h-5 text-[var(--color-vectorless)]" />
+              <Layers className="w-5 h-5 text-emerald-400" />
             </div>
-            <h3 className="text-xl font-bold mb-3 text-[var(--color-primary)]">Hierarchical Navigation</h3>
-            <ul className="space-y-3 text-[var(--color-text)] text-sm">
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vectorless)] shrink-0 mt-0.5" />
-                <span><strong>Ingestion:</strong> Multi-pass hierarchy parsing (embedded TOC → font heuristics → numbering regex).</span>
+            <h3 className="text-lg font-bold mb-3 text-white">Hierarchical Tree Navigation</h3>
+            <ul className="space-y-3 text-slate-300 text-sm">
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Ingestion:</strong> Multi-pass hierarchy parsing (TOC bookmarks, font heuristics, numbering regex).</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vectorless)] shrink-0 mt-0.5" />
-                <span><strong>Summarization:</strong> Bottom-up summary generation for each internal folder/parent node.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Summarization:</strong> Bottom-up summary generation for each section tree node.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vectorless)] shrink-0 mt-0.5" />
-                <span><strong>Navigation:</strong> LLM evaluates node summaries recursively, selecting the child path to follow.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Navigation:</strong> LLM evaluates node summaries recursively, selecting branches to descend.</span>
               </li>
-              <li className="flex items-start gap-2">
-                <ChevronRight className="w-4 h-4 text-[var(--color-vectorless)] shrink-0 mt-0.5" />
-                <span><strong>Synthesis:</strong> The final leaf section text is sent to the LLM to write a high-fidelity answer.</span>
+              <li className="flex items-start gap-2.5">
+                <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-100">Synthesis:</strong> Final targeted leaf text is provided for high-precision answer synthesis.</span>
               </li>
             </ul>
           </div>
-          <div className="mt-6 pt-4 border-t border-[var(--color-border)] text-xs text-[var(--color-vectorless)] font-semibold">
-            🌲 Best for: Highly-structured documents, precise section retrieval, structural metadata questions.
+          <div className="mt-6 pt-4 border-t border-slate-800 text-xs text-emerald-300 font-medium">
+            🌲 Optimal for: Highly-structured documents, table-of-contents navigation, zero embedding overhead.
           </div>
         </motion.div>
       </div>
 
       {/* Architecture diagram Section */}
-      <motion.div variants={itemVariants} className="card p-8 bg-white border border-[var(--color-border)] rounded-xl">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-[var(--color-primary)]">
-          <GitBranch className="w-6 h-6 text-[var(--color-accent)]" />
-          RAG-Arena Architecture &amp; Flow
+      <motion.div
+        variants={itemVariants}
+        className="card p-6 sm:p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md"
+      >
+        <h2 className="text-xl sm:text-2xl font-bold mb-6 flex items-center gap-2.5 text-white">
+          <GitBranch className="w-5 h-5 text-indigo-400" />
+          Deterministic Dual-Axis Decision Tree
         </h2>
 
-        {/* Clean, hand-crafted decision tree in HTML/CSS */}
-        <div className="w-full bg-white rounded-xl p-6 border border-[var(--color-border)] flex flex-col items-center justify-center space-y-4">
+        {/* High-contrast dark decision flow */}
+        <div className="w-full bg-slate-950/80 rounded-2xl p-6 sm:p-8 border border-slate-800 flex flex-col items-center justify-center space-y-4">
           <div className="flex flex-col items-center w-full">
             {/* Input Query */}
-            <div className="px-4 py-2 border border-[var(--color-border)] bg-[#F7F9FB] rounded-lg shadow-sm text-center">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--color-muted)] block">Input</span>
-              <span className="font-semibold text-sm text-[var(--color-primary)]">Incoming Query (q)</span>
+            <div className="px-5 py-2.5 border border-slate-700 bg-slate-900 rounded-xl shadow-lg text-center">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 block">Query Ingestion</span>
+              <span className="font-semibold text-sm text-white">Incoming User Query (q)</span>
             </div>
             
             {/* Arrow */}
-            <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-              <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+            <div className="h-6 w-0.5 bg-slate-700 relative">
+              <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
             </div>
             
             {/* Axis 1 Box */}
-            <div className="px-5 py-3 border border-[var(--color-border)] bg-white rounded-xl shadow-sm text-center max-w-sm">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-signal-1)] font-bold block mb-1">Axis 1: Retrieval Necessity</span>
-              <span className="text-xs text-[var(--color-text)] block mb-1">
-                Computes mean token surprisal <strong>S(q)</strong> against the Google Web Trillion Word corpus.
+            <div className="px-5 py-3 border border-slate-800 bg-slate-900 rounded-xl shadow-md text-center max-w-sm">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-amber-400 font-bold block mb-1">
+                Axis 1: Retrieval Necessity
+              </span>
+              <span className="text-xs text-slate-300 block">
+                Mean Token Surprisal <strong className="text-amber-300">S(q)</strong> against the Google Trillion-Word corpus.
               </span>
             </div>
             
             {/* Arrow */}
-            <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-              <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+            <div className="h-6 w-0.5 bg-slate-700 relative">
+              <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
             </div>
             
             {/* Decision Gate 1 */}
-            <div className="px-4 py-2 border-2 border-dashed border-[var(--color-signal-1)] bg-slate-50 rounded-lg text-center font-mono text-xs font-bold text-[var(--color-text)]">
-              S(q) &lt; 11.5 bits?
+            <div className="px-5 py-2 border border-dashed border-amber-500/50 bg-amber-500/10 rounded-xl text-center font-mono text-xs font-bold text-amber-300 shadow-sm">
+              Is S(q) &lt; 11.5 bits &amp; SQT = False?
             </div>
             
             {/* Yes/No Split */}
-            <div className="w-full max-w-xl flex justify-between relative mt-2 px-10">
+            <div className="w-full max-w-xl flex justify-between relative mt-2 px-6 sm:px-10">
               {/* Horizontal line connector */}
-              <div className="absolute top-0 left-[18%] right-[18%] h-0.5 bg-[var(--color-border)]" />
+              <div className="absolute top-0 left-[20%] right-[20%] h-0.5 bg-slate-700" />
               
               {/* Left Branch (YES) */}
               <div className="flex flex-col items-center w-1/2">
-                <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                <div className="h-6 w-0.5 bg-slate-700 relative">
+                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                 </div>
-                <div className="font-mono text-[10px] text-emerald-600 font-bold mb-1">YES</div>
-                <div className="px-4 py-2 bg-[#E6A817]/10 border border-[#E6A817] text-[#E6A817] rounded-lg text-center font-semibold text-xs shadow-sm max-w-[160px]">
+                <div className="font-mono text-[11px] text-amber-400 font-bold mb-1">YES</div>
+                <div className="px-4 py-2.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 rounded-xl text-center font-semibold text-xs shadow-md max-w-[170px]">
                   PARAMETRIC
-                  <span className="block text-[9px] font-normal text-slate-500 font-mono mt-0.5">(No retrieval)</span>
+                  <span className="block text-[10px] font-normal text-amber-200/80 font-mono mt-0.5">Answer from weights (No RAG)</span>
                 </div>
               </div>
               
               {/* Right Branch (NO) */}
               <div className="flex flex-col items-center w-1/2">
-                <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                <div className="h-6 w-0.5 bg-slate-700 relative">
+                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                 </div>
-                <div className="font-mono text-[10px] text-red-500 font-bold mb-1">NO</div>
+                <div className="font-mono text-[11px] text-sky-400 font-bold mb-1">NO</div>
                 
                 {/* Axis 2 Box */}
-                <div className="px-5 py-3 border border-[var(--color-border)] bg-white rounded-xl shadow-sm text-center max-w-xs">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-signal-2)] font-bold block mb-1">Axis 2: Retrieval Mode</span>
-                  <span className="text-xs text-[var(--color-text)] block mb-1">
-                    Computes entity density <strong>D(q)</strong> and SQT flag.
+                <div className="px-5 py-3 border border-slate-800 bg-slate-900 rounded-xl shadow-md text-center max-w-xs">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-sky-400 font-bold block mb-1">
+                    Axis 2: Retrieval Mode
+                  </span>
+                  <span className="text-xs text-slate-300 block">
+                    Entity Density <strong className="text-sky-300">D(q)</strong> + Syntactic Pattern <strong className="text-sky-300">SQT</strong>
                   </span>
                 </div>
                 
                 {/* Arrow */}
-                <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                <div className="h-6 w-0.5 bg-slate-700 relative">
+                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                 </div>
                 
                 {/* Decision Gate 2 */}
-                <div className="px-4 py-2 border-2 border-dashed border-[var(--color-signal-2)] bg-slate-50 rounded-lg text-center font-mono text-xs font-bold text-[var(--color-text)]">
+                <div className="px-5 py-2 border border-dashed border-sky-500/50 bg-sky-500/10 rounded-xl text-center font-mono text-xs font-bold text-sky-300 shadow-sm">
                   D(q) &gt; 0.15 or SQT = True?
                 </div>
                 
                 {/* YES/NO branch Axis 2 */}
-                <div className="w-full flex justify-between relative mt-2 px-4">
+                <div className="w-full flex justify-between relative mt-2 px-2 sm:px-4">
                   {/* Connector line */}
-                  <div className="absolute top-0 left-[25%] right-[25%] h-0.5 bg-[var(--color-border)]" />
+                  <div className="absolute top-0 left-[25%] right-[25%] h-0.5 bg-slate-700" />
                   
-                  {/* Left (YES) */}
+                  {/* Left (YES -> Vectorless) */}
                   <div className="flex flex-col items-center w-1/2">
-                    <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-                      <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                    <div className="h-6 w-0.5 bg-slate-700 relative">
+                      <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                     </div>
-                    <div className="font-mono text-[10px] text-emerald-700 font-bold mb-1">YES</div>
-                    <div className="px-4 py-2 bg-[#2D6A4F]/10 border border-[#2D6A4F] text-[#2D6A4F] rounded-lg text-center font-semibold text-xs shadow-sm max-w-[140px]">
+                    <div className="font-mono text-[10px] text-emerald-400 font-bold mb-1">YES</div>
+                    <div className="px-3 py-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 rounded-xl text-center font-semibold text-xs shadow-md max-w-[130px]">
                       VECTORLESS
-                      <span className="block text-[9px] font-normal text-slate-500 font-mono mt-0.5">(Section nav)</span>
+                      <span className="block text-[9px] font-normal text-emerald-200/70 font-mono mt-0.5">Section Tree</span>
                     </div>
                   </div>
                   
-                  {/* Right (NO) */}
+                  {/* Right (NO -> Vector) */}
                   <div className="flex flex-col items-center w-1/2">
-                    <div className="h-6 w-0.5 bg-[var(--color-border)] relative">
-                      <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                    <div className="h-6 w-0.5 bg-slate-700 relative">
+                      <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                     </div>
-                    <div className="font-mono text-[10px] text-red-500 font-bold mb-1">NO</div>
-                    <div className="px-4 py-2 bg-[#1A6B8A]/10 border border-[#1A6B8A] text-[#1A6B8A] rounded-lg text-center font-semibold text-xs shadow-sm max-w-[140px]">
+                    <div className="font-mono text-[10px] text-sky-400 font-bold mb-1">NO</div>
+                    <div className="px-3 py-2 bg-sky-500/15 border border-sky-500/40 text-sky-300 rounded-xl text-center font-semibold text-xs shadow-md max-w-[130px]">
                       VECTOR
-                      <span className="block text-[9px] font-normal text-slate-500 font-mono mt-0.5">(Dense index)</span>
+                      <span className="block text-[9px] font-normal text-sky-200/70 font-mono mt-0.5">Dense HNSW</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             
-            {/* Reconvergence Flow */}
+            {/* Arena Benchmarking Evaluation */}
             <div className="w-full flex justify-center relative mt-8">
-              {/* Connector lines to convergence */}
-              <div className="absolute -top-8 left-[18%] right-[18%] h-0.5 bg-[var(--color-border)]" />
               <div className="flex flex-col items-center">
-                <div className="h-8 w-0.5 bg-[var(--color-border)] relative">
-                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-[var(--color-border)]" />
+                <div className="h-8 w-0.5 bg-slate-700 relative">
+                  <div className="absolute bottom-0 -left-1 border-4 border-transparent border-t-slate-700" />
                 </div>
-                <div className="px-5 py-3 border border-[var(--color-border)] bg-[#0C3547] text-white rounded-xl shadow-md text-center max-w-sm">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-slate-300 block mb-1">Answer Generation</span>
-                  <span className="text-xs font-semibold block">Llama 3.3-70B-Versatile</span>
-                  <span className="block text-[9px] text-slate-300 mt-0.5 font-mono">Final Response</span>
+                <div className="px-6 py-3.5 border border-indigo-500/40 bg-indigo-950/80 text-white rounded-xl shadow-xl text-center max-w-sm backdrop-blur-md">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-indigo-300 block mb-1">Benchmarking Arena</span>
+                  <span className="text-xs font-semibold block text-indigo-100">Parallel Arena Execution &amp; Human Voting</span>
+                  <span className="block text-[9px] text-indigo-300/80 mt-0.5 font-mono">Telemetry &amp; Win-Rate Logging</span>
                 </div>
               </div>
             </div>
@@ -251,62 +269,54 @@ export default function About() {
         </div>
       </motion.div>
 
-      {/* DDAR Section */}
-      <motion.div variants={itemVariants} className="card p-8 bg-white border border-[var(--color-border)] rounded-xl">
-        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-[var(--color-primary)]">
-          <Zap className="w-6 h-6 text-[var(--color-accent)]" />
+      {/* DDAR Mathematical Specification */}
+      <motion.div
+        variants={itemVariants}
+        className="card p-6 sm:p-8 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md"
+      >
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 flex items-center gap-2.5 text-white">
+          <Zap className="w-5 h-5 text-indigo-400" />
           The Dual-Axis Routing Mechanism
         </h2>
-        <p className="text-[var(--color-muted)] text-sm mb-6 leading-relaxed">
-          Rather than blindly running queries, the backend uses two sequential, deterministic gates to route
-          each query — with zero neural model calls involved in the decision itself.
+        <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+          Rather than blindly sending every query through expensive embeddings and vector searches, DDAR evaluates two deterministic linguistic properties with zero neural model latency:
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Axis 1 */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-[var(--color-border)]">
-            <span className="text-[var(--color-signal-1)] font-mono text-lg font-bold">01.</span>
-            <h4 className="font-bold my-2 text-[var(--color-primary)]">Axis 1 — Retrieval Necessity</h4>
-            <p className="text-xs text-[var(--color-muted)] leading-relaxed">
-              Computes the mean token surprisal <strong>S(q)</strong> of the query against Peter Norvig's
-              English word-frequency corpus (the full Norvig English word-frequency corpus, approximately 333,000 words representing ~1.02 trillion tokens from the Google Web Trillion Word Corpus). Common
-              words have low surprisal; rare or technical words have high surprisal. If S(q) &lt; θ1
-              (11.5 bits), the query is answered directly from the language model's parametric
-              knowledge — no retrieval, no embedding call.
+          <div className="p-5 bg-slate-950/70 rounded-xl border border-slate-800 space-y-2">
+            <span className="text-amber-400 font-mono text-base font-bold">01.</span>
+            <h4 className="font-bold text-white text-sm">Axis 1 — Retrieval Necessity</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Computes mean token surprisal <strong className="text-amber-300">S(q)</strong> against the Norvig 1/3-million English word-frequency corpus (representing 1.02T tokens from the Google Trillion-Word corpus). If $S(q) &lt; \theta_1$ (11.5 bits) and no deictic/structural pattern is present ($\text{SQT} = \text{False}$), the query consists of common vocabulary and is answered directly from model parametric knowledge.
             </p>
           </div>
           {/* Axis 2 */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-[var(--color-border)]">
-            <span className="text-[var(--color-signal-2)] font-mono text-lg font-bold">02.</span>
-            <h4 className="font-bold my-2 text-[var(--color-primary)]">Axis 2 — Retrieval Mode</h4>
-            <p className="text-xs text-[var(--color-muted)] leading-relaxed">
-              Computes Named Entity Density <strong>D(q)</strong>: the fraction of query tokens that are
-              identifiable as named entities, codes, dates, or structured identifiers (detected by regex + high-surprisal lookup). Also checks a Syntactic Query Type flag <strong>SQT(q)</strong> that fires on
-              section references, DOI/ISBN patterns, and field-value lookups. If D(q) &gt; θ2 (0.15) or SQT
-              fires → Vectorless. Otherwise → Vector.
+          <div className="p-5 bg-slate-950/70 rounded-xl border border-slate-800 space-y-2">
+            <span className="text-sky-400 font-mono text-base font-bold">02.</span>
+            <h4 className="font-bold text-white text-sm">Axis 2 — Retrieval Mode</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Computes Named Entity Density <strong className="text-sky-300">D(q)</strong>: the fraction of query tokens that are proper nouns, numeric codes, or dates. It also tests a Syntactic Query Type flag <strong className="text-sky-300">SQT(q)</strong> detecting section headers, field lookups, and deictic document references. If $D(q) &gt; \theta_2$ (0.15) or SQT fires, queries route to Vectorless tree navigation.
             </p>
           </div>
           {/* Three routes */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-[var(--color-border)]">
-            <span className="text-[var(--color-vectorless)] font-mono text-lg font-bold">03.</span>
-            <h4 className="font-bold my-2 text-[var(--color-primary)]">Three Possible Outcomes</h4>
-            <p className="text-xs text-[var(--color-muted)] leading-relaxed">
-              Every query lands on exactly one path:{' '}
-              <span className="text-[#E6A817] font-semibold">Parametric</span> (S(q) below threshold — model
-              answers from memory),{' '}
-              <span className="text-[#1A6B8A] font-semibold">Vector</span> (high surprisal, low entity
-              density — semantic embedding search via pgvector), or{' '}
-              <span className="text-[#2D6A4F] font-semibold">Vectorless</span> (high surprisal, high entity
-              density or structural pattern — LLM navigates the document section tree directly).
+          <div className="p-5 bg-slate-950/70 rounded-xl border border-slate-800 space-y-2">
+            <span className="text-emerald-400 font-mono text-base font-bold">03.</span>
+            <h4 className="font-bold text-white text-sm">Three Empirical Paths</h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Every query cleanly partitions into:
+              <span className="text-amber-400 font-semibold block mt-1">• Parametric: Answers directly from weights.</span>
+              <span className="text-sky-400 font-semibold block">• Vector: Broad associative cosine search.</span>
+              <span className="text-emerald-400 font-semibold block">• Vectorless: Structured tree traversal.</span>
             </p>
           </div>
         </div>
       </motion.div>
 
       {/* Footer Info */}
-      <motion.div variants={itemVariants} className="flex justify-center items-center gap-6 py-6 text-slate-500 text-sm">
-        <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-slate-400" /> MIT Licensed</span>
+      <motion.div variants={itemVariants} className="flex justify-center items-center gap-6 py-4 text-slate-500 text-xs sm:text-sm">
+        <span className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-slate-400" /> MIT Licensed</span>
         <span>·</span>
-        <span className="flex items-center gap-1.5"><Award className="w-4 h-4 text-slate-400" /> Academic Portfolio</span>
+        <span className="flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-slate-400" /> Empirical QA Arena</span>
       </motion.div>
     </motion.div>
   )

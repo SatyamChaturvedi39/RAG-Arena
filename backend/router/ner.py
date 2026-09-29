@@ -118,6 +118,14 @@ _SQL_FIELD_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Deictic / document-relative reference patterns (meta-queries targeting active document)
+_DEICTIC_DOC_PATTERN = re.compile(
+    r"\b(?:this|the|attached|uploaded)\s+(?:document|file|pdf|paper|report|notes|manual|contract|agreement)\b"
+    r"|\b(?:summarize|summary\s+of)\s+(?:this|the)\b"
+    r"|\baccording\s+to\s+(?:this|the)\s+(?:document|file|pdf|paper|text)\b",
+    re.IGNORECASE,
+)
+
 
 # ── Public Functions ──────────────────────────────────────────────────────────
 
@@ -231,6 +239,7 @@ def compute_sqt_flag(query: str) -> bool:
 
     Returns True if the query contains ANY of:
     - Section/structural references (Section X, Clause Y, etc.)
+    - Deictic document references (this document, the pdf, summarize this, etc.)
     - Catalogue lookup patterns (ISBN, DOI, PMID, CVE, RFC)
     - Field-value lookup phrasing (field=value, field:value, [field]=value)
     - Code token patterns (snake_case, dot.notation, SQL keywords)
@@ -245,6 +254,8 @@ def compute_sqt_flag(query: str) -> bool:
     if _STD_ID_PATTERN.search(query):
         return True
     if _SECTION_NUM_PATTERN.search(query):
+        return True
+    if _DEICTIC_DOC_PATTERN.search(query):
         return True
     if _CODE_TOKEN_PATTERN.search(query):
         return True

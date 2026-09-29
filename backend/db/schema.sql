@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS queries (
     query_type      TEXT CHECK (query_type IN ('precise_factual', 'fuzzy_semantic', 'multi_hop', 'unknown')),
 
     -- Router output
-    router_recommended  TEXT CHECK (router_recommended IN ('vector', 'vectorless')),
+    router_recommended  TEXT CHECK (router_recommended IN ('vector', 'vectorless', 'parametric')),
     router_confidence   FLOAT,
     router_reasoning    TEXT,
     router_signals      JSONB,         -- { structure_score, doc_type, query_type }
