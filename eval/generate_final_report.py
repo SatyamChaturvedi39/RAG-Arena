@@ -1,11 +1,13 @@
 import json
 import os
 import glob
+from typing import Any
+
 
 results_dir = 'eval/results'
 files = [f for f in os.listdir(results_dir) if f.endswith('.json') and 'combined' not in f]
 
-data = {}
+data: dict[tuple[Any, Any], dict[str, Any]] = {}
 for fname in sorted(files):
     path = os.path.join(results_dir, fname)
     try:
@@ -14,7 +16,7 @@ for fname in sorted(files):
         ds = d.get('dataset')
         bl = d.get('baseline')
         agg = d.get('aggregate', {})
-        n = agg.get('n_samples', 0)
+        n = int(agg.get('n_samples', 0))
         key = (ds, bl)
         if key not in data or n > data[key]['n_samples']:
             data[key] = {
@@ -38,7 +40,7 @@ all_bl = ['standard_rag', 'embedding_free', 'dual_axis']
 missing = []
 for ds in all_ds:
     for bl in all_bl:
-        if (ds, bl) not in data or data[(ds, bl)]['n_samples'] < 100:
+        if (ds, bl) not in data or int(data[(ds, bl)]['n_samples']) < 100:
             missing.append((ds, bl))
 
 if missing:

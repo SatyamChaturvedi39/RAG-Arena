@@ -17,6 +17,7 @@ Four baselines:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 import sys
 from pathlib import Path
 
@@ -106,7 +107,7 @@ def dual_axis_route(query: str) -> dict:
 
 # ── Dispatch table ────────────────────────────────────────────────────────────
 
-ROUTE_FNS: dict[str, callable] = {
+ROUTE_FNS: dict[str, Callable[[str], dict]] = {
     "standard_rag":    standard_rag_route,
     "adaptive_rag":    adaptive_rag_route,
     "embedding_free":  embedding_free_route,
